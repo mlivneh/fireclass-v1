@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Learning Space</title>
+    <link rel="stylesheet" href="css/student-app.css">
+</head>
+<body>
+    <div id="login-container" class="container">
+        <div class="login-box">
+            <h1>✏️ Classroom Learning Space</h1>
+            <p>To join the lesson, please enter your name and room code</p>
+            <form id="login-form">
+                <input type="text" id="player-name" placeholder="Your name" required>
+                <div class="input-group">
+                    <label for="teacher-uid">🏫 Room Code:</label>
+                    <input type="text" id="teacher-uid" placeholder="Enter 4-digit room code" maxlength="4" required>
+                </div>
+                <button type="submit">Join Lesson</button>
+            </form>
+        </div>
+    </div>
+
+    <main id="main-container" style="display: none;">
+        <iframe id="content-frame" src="about:blank" title="Lesson Content"></iframe>
+    </main>
+
+    <div id="poll-interface" style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 1001; background: rgba(30, 30, 50, 0.9); padding: 20px; border-radius: 12px; display: none; gap: 15px; border: 2px solid white; box-shadow: 0 0 20px rgba(0,0,0,0.5);">
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-functions-compat.js"></script>
+
+    <script src="firebase-config.js"></script>
+
+    <script>
+      // Initialize the Firebase app using your configuration
+      firebase.initializeApp(firebaseConfig);
+
+      // Create global references to the services we will use
+      const db = firebase.firestore();
+      const auth = firebase.auth();
+      const functions = firebase.functions();
+    </script>
+
+    <script src="js/ClassroomSDK.js"></script>
+    <script src="js/student-app.js"></script>
+</body>
+</html>

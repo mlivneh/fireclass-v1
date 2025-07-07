@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Dashboard - ClassroomSDK</title>
+    <!-- CSS Link -->
+    <link rel="stylesheet" href="css/teacher-dashboard.css">
+</head>
+<body>
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+    </div>
+    <!-- Header with Professional Navigation -->
+    <header class="header">
+        <div class="nav-container">
+            <div class="logo">
+                <span class="logo-icon">⚙️</span>
+                <span class="logo-text">fireClass Control</span>
+            </div>
+            
+            <div id="header-room-display" class="header-room-display">
+                <span class="room-code-label">Room Code:</span>
+                <span id="header-room-code" class="room-code-value">...</span>
+                <img id="qr-code-image" class="qr-code" alt="QR Code for Classroom" title="Click to copy student link"/>
+            </div>
+            
+            <nav>
+                <ul class="nav-menu">
+                    <!-- Quick Actions -->
+                    <li class="nav-item">
+                        <a href="#" class="nav-link">
+                            <span class="nav-icon">⚡</span>
+                            <span>Quick Actions</span>
+                        </a>
+                        <div class="dropdown">
+                            <div class="dropdown-header">Quick actions for lesson management</div>
+                            <a href="#" class="dropdown-item success-item" onclick="sendQuickMessage('Let\'s start the lesson!')">
+                                <span class="dropdown-icon">🎓</span>
+                                <div class="dropdown-content">
+                                    <div class="dropdown-title">Start Lesson</div>
+                                    <div class="dropdown-desc">Send message to all students</div>
+                                </div>
+                            </a>
+                            <a href="#" class="dropdown-item warning-item" onclick="sendQuickMessage('Time for a break! Come back in 5 minutes.')">
+                                <span class="dropdown-icon">☕</span>
+                                <div class="dropdown-content">
+                                    <div class="dropdown-title">Break Time</div>
+                                    <div class="dropdown-desc">Announce break time</div>
+                                </div>
+                            </a>
+                            <a href="#" class="dropdown-item" onclick="sendQuickMessage('The lesson has ended. Well done everyone!')">
+                                <span class="dropdown-icon">✅</span>
+                                <div class="dropdown-content">
+                                    <div class="dropdown-title">End Lesson</div>
+                                    <div class="dropdown-desc">Finish the lesson</div>
+                                </div>
+                            </a>
+                            <a href="#" class="dropdown-item danger-item" onclick="resetClassroomData()">
+                                <span class="dropdown-icon">🔄</span>
+                                <div class="dropdown-content">
+                                    <div class="dropdown-title">New Lesson</div>
+                                    <div class="dropdown-desc">Clear all lesson data</div>
+                                </div>
+                            </a>
+                        </div>
+                    </li>
+
+                    <!-- Games and Content -->
+                    <li class="nav-item">
+                        <a href="#" class="nav-link" onclick="window.teacherDashboard.openContentModal()">
+                            <span class="nav-icon">🎮</span>
+                            <span>Games & Content</span>
+                        </a>
+                    </li>
+
+                    <!-- AI Management -->
+                    <li class="nav-item">
+                        <a href="#" class="nav-link" id="aiMenuLink">
+                            <span class="nav-icon">🤖</span>
+                            <span>AI Management</span>
+                        </a>
+                        <div class="dropdown">
+                            <div class="dropdown-header">AI Assistant settings for students</div>
+                            
+                            <a href="#" class="dropdown-item" id="toggleAI" onclick="console.log('🟢 TRACE: AI button clicked'); window.teacherDashboard.toggleAIForClass()">
+                                <span class="dropdown-icon" id="aiStatusIcon">🔴</span>
+                                <div class="dropdown-content">
+                                    <div class="dropdown-title" id="aiStatusText">AI disabled for students</div>
+                                    <div class="dropdown-desc">Click to enable</div>
+                                </div>
+                            </a>
+                            
+                            <div style="padding: 10px 20px; border-top: 1px solid #f0f2f5; background: #f8f9fa;">
+                                <strong style="font-size: 14px; color: #555;">🎯 Select model for class:</strong>
+                                <div style="font-size: 12px; color: #777; margin-top: 2px;">Current model: <span class="current-ai-model">ChatGPT</span></div>
+                            </div>
+                            
+                            <a href="#" class="dropdown-item ai-model-btn" data-model="chatgpt" onclick="window.teacherDashboard.switchAIModel('chatgpt')">
+                                <span class="dropdown-icon">🤖</span>
+                                <div class="dropdown-content">
+                                    <div class="dropdown-title">ChatGPT</div>
+                                    <div class="dropdown-desc">Advanced model from OpenAI</div>
+                                </div>
+                            </a>
+                            
+                            <a href="#" class="dropdown-item ai-model-btn" data-model="claude" onclick="window.teacherDashboard.switchAIModel('claude')">
+                                <span class="dropdown-icon">🧠</span>
+                                <div class="dropdown-content">
+                                    <div class="dropdown-title">Claude</div>
+                                    <div class="dropdown-desc">Smart model from Anthropic</div>
+                                </div>
+                            </a>
+                            
+                            <a href="#" class="dropdown-item ai-model-btn" data-model="gemini" onclick="window.teacherDashboard.switchAIModel('gemini')">
+                                <span class="dropdown-icon">✨</span>
+                                <div class="dropdown-content">
+                                    <div class="dropdown-title">Gemini</div>
+                                    <div class="dropdown-desc">Google's model</div>
+                                </div>
+                            </a>
+                        </div>
+                    </li>
+
+                    <!-- Tools -->
+                    <li class="nav-item">
+                        <a href="#" class="nav-link">
+                            <span class="nav-icon">🔧</span>
+                            <span>Tools</span>
+                        </a>
+                        <div class="dropdown">
+                            <div class="dropdown-header">Utilities and debugging tools</div>
+                            <a href="#" class="dropdown-item" onclick="toggleDebug()">
+                                <span class="dropdown-icon">🐛</span>
+                                <div class="dropdown-content">
+                                    <div class="dropdown-title">Debug Console</div>
+                                    <div class="dropdown-desc">Show technical information</div>
+                                </div>
+                            </a>
+                            <a href="#" class="dropdown-item" onclick="exportData()">
+                                <span class="dropdown-icon">📊</span>
+                                <div class="dropdown-content">
+                                    <div class="dropdown-title">Export Data</div>
+                                    <div class="dropdown-desc">Save student list and messages</div>
+                                </div>
+                            </a>
+                        </div>
+                    </li>
+
+                    <!-- Polls -->
+                    <li class="nav-item">
+                        <a href="#" class="nav-link">
+                            <span class="nav-icon">📊</span>
+                            <span>Polls</span>
+                        </a>
+                        <div class="dropdown">
+                            <a href="#" class="dropdown-item" onclick="window.teacherDashboard.openPollCreationModal()">
+                                <span class="dropdown-icon">➕</span>
+                                <div class="dropdown-content">
+                                    <div class="dropdown-title">Start New Poll</div>
+                                    <div class="dropdown-desc">Send quick question to class</div>
+                                </div>
+                            </a>
+                        </div>
+                    </li>
+
+                    <!-- Reports -->
+                    <li class="nav-item">
+                        <a href="#" class="nav-link">
+                            <span class="nav-icon">📊</span>
+                            <span>Reports</span>
+                        </a>
+                        <div class="dropdown">
+                            <div class="dropdown-header">Reports and analytics (FFU)</div>
+                            <a href="#" class="dropdown-item" onclick="generateLessonSummary()">
+                                <span class="dropdown-icon">📋</span>
+                                <div class="dropdown-content">
+                                    <div class="dropdown-title">Lesson Summary</div>  
+                                    <div class="dropdown-desc">Comprehensive AI report of entire lesson</div>
+                                </div>
+                            </a>
+                            <a href="#" class="dropdown-item" onclick="exportLessonData()">
+                                <span class="dropdown-icon">💾</span>
+                                <div class="dropdown-content">
+                                    <div class="dropdown-title">Export Lesson Data</div>
+                                    <div class="dropdown-desc">Save all data to file</div>
+                                </div>
+                            </a>
+                        </div>
+                    </li>
+                </ul>
+            </nav>
+
+            <!-- Add this button right after the <nav> element -->
+            <button id="resetScreensBtn" title="Stop current activity and clear all student screens" style="background: #e74c3c; color: white; border: none; padding: 8px 16px; border-radius: 20px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 18px;">⏹️</span>
+                <span>Clear Screens</span>
+            </button>
+
+            <div class="status-indicator" id="connectionStatus">
+                <div class="status-dot"></div>
+                <span>Connecting...</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Students Section -->
+        <div class="section">
+            <h2>👥 Connected Students (<span id="studentsCount">0</span>)</h2>
+            <div id="studentsList" class="students-list">
+                <div class="no-students">No students connected yet</div>
+            </div>
+        </div>
+
+        <!-- Chat Section -->
+        <div class="section">
+            <h2>💬 Communication with Students</h2>
+            <div id="messagesArea" class="chat-messages">
+                <div class="no-messages">No messages yet</div>
+            </div>
+            <form id="chat-form" style="display: flex; gap: 10px;">
+                <input type="text" id="chat-input" placeholder="Type a message to all students..." required style="flex-grow: 1;">
+                <button type="submit">Send</button>
+            </form>
+        </div>
+
+        <!-- Poll Section -->
+        <div class="section" id="poll-section" style="display:none;">
+            <h2>📊 Real-time Poll Results</h2>
+            <div id="poll-results-container"></div>
+            <button id="stop-poll-btn" style="background: #e74c3c; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; margin-top: 20px;">End poll and hide results</button>
+        </div>
+
+        <!-- Activity Section -->
+        <div class="section">
+            <h2>📊 Recent Activity</h2>
+            <div id="activitiesArea" class="activity-log">
+                <div class="no-activity">No activity yet</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Templates -->
+    <template id="studentTemplate">
+        <div class="student-item">
+            <div class="student-info">
+                <span class="student-name"></span>
+                <div class="student-actions"></div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Private Message Modal -->
+    <div id="privateMessageModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>✉️ Private Message</h3>
+                <button class="modal-close">×</button>
+            </div>
+            <div class="modal-body">
+                <p>Sending private message to: <span id="privateMessageRecipient"></span></p>
+                <textarea id="privateMessageText" placeholder="Write your private message..." rows="4"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-close">Cancel</button>
+                <button onclick="sendPrivateMessage()" class="primary">Send Message</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Message Modal -->
+    <div id="messageModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>💬 Send Message to Class</h3>
+                <button class="modal-close">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="messageForm">
+                    <textarea id="messageText" placeholder="Write a message to all students..." rows="4" required></textarea>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-close">Cancel</button>
+                <button type="submit" form="messageForm" class="primary">Send Message</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Content Modal -->
+    <div id="customContentModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>📤 Send Game or Content to Students</h3>
+                <button class="modal-close">×</button>
+            </div>
+            <div class="modal-body" style="padding: 0;">
+                <div id="game-list-container" style="padding: 20px; max-height: 300px; overflow-y: auto; border-bottom: 1px solid #eee;">
+                </div>
+                <div id="custom-url-section" style="padding: 20px; background: #f9f9f9;">
+                    <p style="margin: 0 0 10px 0; font-weight: 500;">Or send custom link:</p>
+                    <form id="customUrlForm" style="display: flex; gap: 10px;">
+                        <input type="url" id="customUrlInput" placeholder="Enter full URL..." required style="flex-grow: 1; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+                        <button type="submit" class="primary" style="white-space: nowrap;">Send Link</button>
+                    </form>
+                </div>
+            </div>
+            <div class="modal-footer">
+                 <a href="#" class="danger-item" onclick="window.teacherDashboard.sendCommand('LOAD_CONTENT', { url: 'about:blank' })" style="margin-right: auto; text-decoration:none; padding: 8px 12px; border-radius: 6px;">
+                    ⏹️ Stop content and clear screens
+                </a>
+                <button class="modal-close">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Poll Creation Modal -->
+    <div id="poll-creation-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3>Select Poll Type</h3>
+                <button class="modal-close">×</button>
+            </div>
+            <div class="modal-body" style="display: flex; flex-direction: column; gap: 15px;">
+                <button class="poll-type-btn" data-type="yes_no">Yes / No Poll</button>
+                <button class="poll-type-btn" data-type="multiple_choice">Multiple Choice Poll (1-4)</button>
+                <button class="poll-type-btn" data-type="open_text">Open Question (Free text)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Open Question Modal -->
+    <div id="open-question-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Open Question Responses</h3>
+                <button class="modal-close">×</button>
+            </div>
+            <div id="open-question-results" class="modal-body" style="max-height: 400px; overflow-y: auto;"></div>
+            <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; gap: 10px;">
+                    <button id="ai-summarize-btn">Summarize with AI</button>
+                    <button id="ai-keywords-btn">Extract Keywords</button>
+                </div>
+                <button id="close-open-question-btn" class="danger-item" style="padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer;">
+                    ⏹️ End Poll
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- End Lesson Modal -->
+    <div id="end-lesson-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🎓 End of Lesson</h3>
+                <button class="modal-close">×</button>
+            </div>
+            <div class="modal-body">
+                <p>The lesson has ended! Choose which report you'd like to generate:</p>
+                <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+                    <button class="poll-type-btn" onclick="generateLessonSummary()">
+                        📋 Comprehensive Summary Report
+                    </button>
+                    <button class="poll-type-btn" onclick="exportLessonData()">
+                        💾 Export Lesson Data
+                    </button>
+                    <button class="poll-type-btn" onclick="generateStudentProgress()">
+                        👥 Student Progress Report
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-close">Close</button>
+            </div>
+        </div>
+    </div>
+
+<!-- Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-functions-compat.js"></script>
+    <script src="firebase-config.js"></script>
+
+    <!-- טען את ClassroomSDK לפני teacher-dashboard -->
+    <script src="js/ClassroomSDK.js"></script>
+    <script src="js/teacher-dashboard.js"></script>
+
+    <script>
+        console.log('🟢 TRACE: index.html loaded');
+        
+        // וודא שFirebase מאותחל
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        const functions = firebase.functions();
+        
+        console.log('🔍 Firebase initialized');
+        console.log('🔍 ClassroomSDK available:', typeof ClassroomSDK);
+        
+        window.addEventListener('load', () => {
+            console.log('🟢 TRACE: Window loaded, initializing teacher dashboard');
+            window.teacherDashboard = new TeacherDashboard();
+            window.teacherDashboard.init().then(() => {
+                console.log('✅ Teacher dashboard fully initialized');
+            }).catch(error => {
+                console.error('❌ Teacher dashboard initialization failed:', error);
+            });
+        });
+        
+        // פונקציות גלובליות
+        function sendQuickMessage(message) {
+            console.log('🟢 TRACE: sendQuickMessage called');
+            if (window.teacherDashboard) {
+                window.teacherDashboard.sendMessageToClass(message);
+            } else {
+                console.error('❌ teacherDashboard not available');
+            }
+        }
+
+        function testAIService() {
+            console.log('🟢 TRACE: testAIService called');
+            if (window.teacherDashboard && window.teacherDashboard.testAIService) {
+                window.teacherDashboard.testAIService();
+            } else {
+                console.error('❌ testAIService not available');
+            }
+        }
+
+        function sendPrivateMessage() {
+            if (window.teacherDashboard && window.teacherDashboard.sendPrivateMessage) {
+                window.teacherDashboard.sendPrivateMessage();
+            }
+        }
+
+        // בדיקת debug למצב המערכת
+        function debugSystemState() {
+            console.log('🔍 System Debug:');
+            console.log('- window.teacherDashboard:', !!window.teacherDashboard);
+            console.log('- teacherDashboard.sdk:', !!window.teacherDashboard?.sdk);
+            console.log('- sdk.toggleAI:', !!window.teacherDashboard?.sdk?.toggleAI);
+            console.log('- ClassroomSDK:', typeof ClassroomSDK);
+            
+            if (window.teacherDashboard?.sdk) {
+                console.log('- SDK methods:', Object.getOwnPropertyNames(window.teacherDashboard.sdk));
+            }
+        }
+        
+        // קרא לבדיקה אחרי 3 שניות
+        setTimeout(debugSystemState, 3000);
+    </script>
+</body>
+</html>

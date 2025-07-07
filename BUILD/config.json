@@ -1,0 +1,41 @@
+{
+  "studentAppUrl": "https://class-board-ad64e.web.app/student-app.html",
+  "games": [
+    {
+      "name": "AI Model Training",
+      "description": "Visual Recognition training",
+      "icon": "📚",
+      "url": "https://meir.world/face-recognition/"
+    },
+    {
+      "name": "TM",
+      "description": "Goggle Teachable Machines",
+      "icon": "🎯",
+      "url": "https://teachablemachine.withgoogle.com/train"
+    },
+    {
+      "name": "PhET",
+      "description": "Projectile Data Lab",
+      "icon": "🎯",
+      "url": "https://phet.colorado.edu/sims/html/projectile-data-lab/latest/projectile-data-lab_all.html"
+    },
+    {
+      "name": "Kahoot",
+      "description": "Interactive quiz game",
+      "icon": "🎯",
+      "url": "https://kahoot.it"
+    },
+    {
+      "name": "Wordwall",
+      "description": "Word games and creation",
+      "icon": "🎲",
+      "url": "https://wordwall.net"
+    },
+    {
+      "name": "Scratch",
+      "description": "Programming and creation",
+      "icon": "🐱",
+      "url": "https://scratch.mit.edu"
+    }
+  ]
+}

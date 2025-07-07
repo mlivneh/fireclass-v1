@@ -1,0 +1,295 @@
+/* student-app.css - English LTR Version */
+
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f0f2f5;
+    overflow: hidden;
+    direction: ltr; /* Explicit LTR direction */
+}
+
+.container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+}
+
+.login-box {
+    background: white;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+    text-align: center;
+    width: 90%;
+    max-width: 400px;
+}
+
+.login-box h1 {
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.login-box p {
+    color: #666;
+    margin-bottom: 25px;
+}
+
+#player-name {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 20px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 16px;
+    box-sizing: border-box;
+    text-align: left; /* Explicit LTR alignment */
+    direction: ltr;
+}
+
+.input-group {
+    margin-bottom: 20px;
+    text-align: left; /* Align labels to the left for LTR */
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: #555;
+}
+
+#teacher-uid {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 16px;
+    box-sizing: border-box;
+    text-align: left; /* Explicit LTR alignment */
+    direction: ltr;
+}
+
+.login-box button {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    background-color: #007bff;
+    color: white;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.login-box button:hover {
+    background-color: #0056b3;
+}
+
+#main-container {
+    width: 100%;
+    height: 100%;
+}
+
+#content-frame {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* Message and Poll Animations */
+.new-message-indicator {
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7);
+    }
+    70% {
+        transform: scale(1.1);
+        box-shadow: 0 0 10px 20px rgba(0, 123, 255, 0);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(0, 123, 255, 0);
+    }
+}
+
+/* Shake animation for notifications */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-2px); }
+    75% { transform: translateX(2px); }
+}
+
+.new-message-shake {
+    animation: shake 0.5s ease-in-out 3;
+}
+
+/* Bounce animation for message badges */
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-10px); }
+    60% { transform: translateY(-5px); }
+}
+
+.message-badge {
+    position: absolute !important;
+    top: -5px !important;
+    right: -5px !important;
+    background: #dc3545 !important;
+    color: white !important;
+    border-radius: 50% !important;
+    width: 20px !important;
+    height: 20px !important;
+    font-size: 12px !important;
+    font-weight: bold !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    animation: bounce 0.5s ease !important;
+    z-index: 1001 !important;
+}
+
+/* Poll Interface Styles */
+#poll-interface {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    direction: ltr;
+}
+
+#poll-interface button {
+    transition: all 0.3s ease;
+    font-family: inherit;
+}
+
+#poll-interface button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+#poll-interface button:active {
+    transform: translateY(0);
+}
+
+#poll-interface button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+#poll-interface textarea {
+    text-align: left; /* LTR text input */
+    direction: ltr;
+}
+
+/* Blinking animation for chat notifications */
+.blinking {
+    animation: blink-animation 0.5s infinite alternate;
+}
+
+@keyframes blink-animation {
+    from {
+        transform: scale(1);
+        box-shadow: 0 0 10px #fff;
+    }
+    to {
+        transform: scale(1.1);
+        box-shadow: 0 0 20px #ffeb3b, 0 0 30px #ffeb3b;
+    }
+}
+
+/* High Z-index for floating elements */
+#classroom-ai-container {
+    z-index: 10002 !important;
+}
+
+#classroom-chat-btn {
+    z-index: 10000 !important;
+}
+
+#classroom-chat-container {
+    z-index: 10001 !important;
+}
+
+/* Auto Chat Opening Animation - updated for LTR */
+@keyframes chatSlideIn {
+    from {
+        transform: translateX(100%); /* Slide in from right for LTR */
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Special visual effect for auto-opened chat */
+.chat-auto-opened {
+    border: 2px solid #007bff !important;
+    box-shadow: 0 0 20px rgba(0, 123, 255, 0.5) !important;
+}
+
+/* Button pulse animation */
+@keyframes chatButtonPulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    50% {
+        transform: scale(1.1);
+        box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+}
+
+.chat-button-pulse {
+    animation: chatButtonPulse 0.6s ease-in-out;
+}
+
+/* Responsive adjustments for mobile */
+@media (max-width: 768px) {
+    .login-box {
+        padding: 30px;
+        margin: 20px;
+    }
+    
+    #poll-interface {
+        flex-direction: column;
+        gap: 10px;
+        padding: 15px;
+    }
+    
+    #poll-interface button {
+        width: 100%;
+        max-width: 200px;
+    }
+}
+
+/* Success notification styles */
+.success-notification {
+    background: #28a745;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 6px;
+    margin: 10px 0;
+    text-align: center;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
