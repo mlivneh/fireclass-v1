@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>fireClass Control - From PowerPoint to Interactive Classroom</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.7;
+            color: #333;
+            background: #f4f7f9;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            padding: 60px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .header h1 {
+            font-size: 3em;
+            margin: 0;
+            font-weight: 700;
+        }
+        .header p {
+            font-size: 1.25em;
+            opacity: 0.9;
+            margin-top: 10px;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .main-cta-button {
+            display: inline-block;
+            background: #ffc107;
+            color: #333;
+            padding: 15px 35px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-top: 30px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .main-cta-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+        }
+        .hero-image {
+            text-align: center;
+            margin: -80px auto 40px auto;
+            position: relative;
+            z-index: 2;
+        }
+        .hero-image img {
+            max-width: 90%;
+            width: 800px;
+            border-radius: 12px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+            border: 5px solid white;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        .hero-image img.loaded {
+            opacity: 1;
+        }
+        .content-section {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            margin-bottom: 40px;
+        }
+        h2 {
+            font-size: 2.2em;
+            color: #2c3e50;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+        h3 {
+            font-size: 1.5em;
+            color: #34495e;
+            margin-top: 30px;
+        }
+        code {
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: #c7254e;
+        }
+        .image-table {
+            width: 100%;
+            border: none;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .image-table td {
+            border: none;
+            padding: 10px;
+            vertical-align: top;
+            text-align: center;
+        }
+        .image-table img {
+            width: 100%;
+            border-radius: 8px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        .image-table img.loaded {
+            opacity: 1;
+        }
+        .footer {
+            text-align: center;
+            padding: 30px;
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+        .final-cta {
+            text-align: center;
+            padding: 40px 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+        }
+        .loading-placeholder {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+        }
+        .single-image {
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            max-width: 700px;
+            width: 100%;
+            border-radius: 8px;
+        }
+        .single-image.loaded {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <h1>fireClass Control</h1>
+        <p>From a static PowerPoint slide to a live, interactive, and data-driven classroom in a single click.</p>
+        <a href="https://class-board-ad64e.web.app/" class="main-cta-button" target="_blank">Try Live Demo 🚀</a>
+    </header>
+
+    <div class="container">
+        <div class="content-section">
+            <h2>The Problem: Great Content, Isolated Classrooms</h2>
+            <p>Teachers and the internet are full of amazing educational content. But there's a huge gap between a great online simulation and a tool that's truly classroom-ready. How do you integrate it into a lesson? How do you know who understands and who is struggling? Most teachers face a choice: use a closed platform with limited content, or find great content online that works in isolation.</p>
+        </div>
+
+        <div class="content-section">
+            <h2>A Third Way: The Classroom Wrapper</h2>
+            <p>What if the answer isn't choosing, but bridging? I built a platform that takes any web-based content and "wraps" it with classroom infrastructure. With one click from an existing PowerPoint slide, any educational website becomes a full classroom tool with real-time data, AI-powered insights, and communication channels. The magic isn't in replacing content—it's in making it classroom-ready.</p>
+        </div>
+
+        <div class="hero-image">
+            <div class="loading-placeholder" id="hero-placeholder">Loading overview image...</div>
+            <img id="hero-img" alt="An overview of the fireClass workflow">
+        </div>
+
+        <div class="content-section">
+            <h2>Visual Workflow: Teacher and Student Views</h2>
+            <table class="image-table">
+              <tr>
+                <td><strong>Teacher's Dashboard View</strong></td>
+                <td><strong>Student's Multi-Tool View</strong></td>
+              </tr>
+              <tr>
+                <td>
+                    <div class="loading-placeholder" id="teacher-placeholder">Loading teacher view...</div>
+                    <img id="teacher-img" alt="Teacher Dashboard with AI Analysis">
+                </td>
+                <td>
+                    <div class="loading-placeholder" id="student-placeholder">Loading student view...</div>
+                    <img id="student-img" alt="Student View with all tools open">
+                </td>
+              </tr>
+            </table>
+            <p>The transformation happens in one click - from a traditional presentation to a live environment where students are actively engaged on their devices, while the teacher maintains full visibility and control.</p>
+        </div>
+
+        <div class="content-section">
+            <h2>The Pedagogical Foundation: From Q&A to Dialogue</h2>
+            <h3>The Two-Loop Feedback System</h3>
+            <p>The platform enables a powerful two-loop feedback system. The <strong>Micro-Loop</strong> provides real-time AI "snapshot analysis" of student answers, allowing the teacher to adjust their teaching on the fly. The <strong>Macro-Loop</strong> provides an end-of-lesson AI synthesis, analyzing the entire history of answers to reveal patterns of growth and understanding across the whole class.</p>
+            <h3>Making Thinking Visible</h3>
+            <p>By saving a history of each student's evolving answers to a single question, we make their thinking process visible. This transforms classroom discussions from "right or wrong" to a data-driven exploration of *why* and *how* understanding changes.</p>
+        </div>
+
+        <div class="content-section">
+            <h2>A Real Example: AI Face Recognition, Reimagined</h2>
+            <p>Consider a simple web app teaching the basics of AI face recognition. With fireClass, this standalone app becomes part of a rich classroom experience: the teacher sends the app to all students, asks probing questions via the polling system, gets an AI snapshot of their strategies, and guides a targeted discussion based on real-time data—all without leaving their original presentation flow.</p>
+            <p align="center">
+              <div class="loading-placeholder" id="homer-placeholder">Loading Homer Simpson example...</div>
+              <img id="homer-img" class="single-image" alt="The Homer Simpson face recognition application">
+            </p>
+        </div>
+
+        <div class="content-section">
+            <h2>Modern Development and Reliability</h2>
+            <p>This platform was built orchestrating modern AI tools like Claude and GPT, and implemented with the help of Cursor. To ensure rock-solid reliability, the system is validated using an extensive suite of automated end-to-end tests built with **Playwright**. These tests simulate entire pedagogical scenarios—multiple students answering polls simultaneously, real-time communication flows, and AI analysis cycles—to guarantee that the technology remains an invisible and robust support for the teacher.</p>
+        </div>
+
+        <div class="content-section">
+            <h2>About the Creator</h2>
+            <p>This platform emerged from the intersection of mathematical curiosity and classroom reality. As a mathematics teacher, I needed a way to bridge the gap between brilliant educational content and the practical need for real-time feedback. fireClass is the result: a system designed for educators who want to use the entire internet as their curriculum while maintaining the personal connection that makes teaching effective.</p>
+        </div>
+
+        <div class="final-cta">
+            <h2>Ready to Transform Your Classroom?</h2>
+            <p>Experience the platform from the teacher's perspective. Launch the live demo to create a room and get started.</p>
+            <a href="https://class-board-ad64e.web.app/" class="main-cta-button" target="_blank">Try Teacher Live Demo 🚀</a>
+
+            <p style="margin-top: 25px; font-size: 0.9em; color: #6c757d;">
+                Joining as a student? Go to the student app page and enter the room code provided by the teacher.<br>
+                <a href="https://class-board-ad64e.web.app/student-app.html" target="_blank" style="font-weight: bold; color: #34495e;">Student App Entry Point</a>
+            </p>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p><strong>Copyright and Permissions</strong></p>
+        <p>Copyright © 2025 Meir Livneh. All Rights Reserved.</p>
+        <p>For permission requests, please contact the author directly: mlivneh@gmail.com</p>
+        <p><strong>Technical Note:</strong> For the best experience, please disable Ad-Blockers. Real-time communication may be disrupted by some extensions.</p>
+    </footer>
+
+    <script>
+        // Image loading configuration
+        const imageConfig = {
+            'hero-img': 'images/the_big_picture.png',
+            'teacher-img': 'images/teacher_poll_ai_analysis.png',
+            'student-img': 'images/student_all_windows_open.png',
+            'homer-img': 'images/homer_face_recognition.png'
+        };
+
+        // Function to load a single image
+        function loadImage(imgId, imagePath) {
+            const img = document.getElementById(imgId);
+            const placeholder = document.getElementById(imgId.replace('-img', '-placeholder'));
+            
+            if (!img) return;
+            
+            img.onload = function() {
+                img.classList.add('loaded');
+                if (placeholder) {
+                    placeholder.style.display = 'none';
+                }
+            };
+            
+            img.onerror = function() {
+                console.warn(`Could not load image: ${imagePath}`);
+                if (placeholder) {
+                    placeholder.innerHTML = `Image not available: ${imagePath.split('/').pop()}`;
+                    placeholder.style.color = '#dc3545';
+                }
+            };
+            
+            img.src = imagePath;
+        }
+
+        // Load all images when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Small delay to let the page render first
+            setTimeout(() => {
+                console.log('Starting to load images...');
+                Object.entries(imageConfig).forEach(([imgId, imagePath]) => {
+                    console.log(`Loading ${imgId}: ${imagePath}`);
+                    loadImage(imgId, imagePath);
+                });
+            }, 100);
+        });
+    </script>
+
+</body>
+</html>

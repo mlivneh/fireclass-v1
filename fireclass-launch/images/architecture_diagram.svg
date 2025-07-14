@@ -1,0 +1,56 @@
+<svg width="600" height="400" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="600" height="400" fill="#f8f9fa"/>
+  
+  <!-- Teacher Slide -->
+  <rect x="50" y="50" width="120" height="60" rx="10" fill="#4facfe" stroke="#2196F3" stroke-width="2"/>
+  <text x="110" y="85" text-anchor="middle" fill="white" font-family="Arial" font-size="14" font-weight="bold">Teacher Slide</text>
+  
+  <!-- Dashboard -->
+  <rect x="240" y="130" width="120" height="60" rx="10" fill="#28a745" stroke="#198754" stroke-width="2"/>
+  <text x="300" y="165" text-anchor="middle" fill="white" font-family="Arial" font-size="14" font-weight="bold">Dashboard</text>
+  
+  <!-- Firestore -->
+  <rect x="240" y="250" width="120" height="60" rx="10" fill="#ff6b35" stroke="#e55a32" stroke-width="2"/>
+  <text x="300" y="285" text-anchor="middle" fill="white" font-family="Arial" font-size="14" font-weight="bold">Firestore</text>
+  
+  <!-- Student App -->
+  <rect x="50" y="250" width="120" height="60" rx="10" fill="#9c27b0" stroke="#8e24aa" stroke-width="2"/>
+  <text x="110" y="285" text-anchor="middle" fill="white" font-family="Arial" font-size="14" font-weight="bold">Student App</text>
+  
+  <!-- AI Server -->
+  <rect x="430" y="250" width="120" height="60" rx="10" fill="#ffc107" stroke="#ffb300" stroke-width="2"/>
+  <text x="490" y="285" text-anchor="middle" fill="black" font-family="Arial" font-size="14" font-weight="bold">AI Server</text>
+  
+  <!-- Arrows -->
+  <!-- Teacher Slide to Dashboard -->
+  <path d="M 170 90 Q 200 110 240 150" fill="none" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Dashboard to Firestore -->
+  <line x1="300" y1="190" x2="300" y2="250" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Firestore to Student App -->
+  <line x1="240" y1="280" x2="170" y2="280" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Student App to Firestore -->
+  <path d="M 170 265 Q 200 240 240 265" fill="none" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Firestore to AI Server -->
+  <line x1="360" y1="280" x2="430" y2="280" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- AI Server to Firestore -->
+  <path d="M 430 295 Q 395 320 360 295" fill="none" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Firestore to Dashboard -->
+  <path d="M 285 250 Q 270 220 285 190" fill="none" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Arrow marker definition -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#333"/>
+    </marker>
+  </defs>
+  
+  <!-- Title -->
+  <text x="300" y="30" text-anchor="middle" fill="#333" font-family="Arial" font-size="18" font-weight="bold">System Architecture</text>
+</svg>

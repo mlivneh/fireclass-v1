@@ -1,3 +1,13 @@
+/*
+ * Copyright © 2025 Meir Livneh. All Rights Reserved.
+ *
+ * This software and associated documentation files (the "Software") are proprietary and confidential.
+ * The Software is furnished under a license agreement and may be used or copied only in
+ * accordance with the terms of the agreement.
+ *
+ * Unauthorized copying of this file, via any medium, is strictly prohibited.
+ */
+
 // SIMPLIFIED CLASSROOM SDK - 4-DIGIT ROOM CODES ONLY!
 
 class ClassroomSDK {
@@ -5,7 +15,7 @@ class ClassroomSDK {
         try {
             this.db = firebase.firestore();
             this.auth = firebase.auth();
-            this.functions = firebase.app().functions('europe-west1');
+            this.functions = firebase.app().functions();
             console.log('✅ Firebase services initialized in constructor.');
         } catch (e) {
             console.error("❌ CRITICAL: Could not initialize Firebase services.", e);

@@ -1,0 +1,108 @@
+<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="800" height="600" fill="#f8f9fa"/>
+  
+  <!-- Arrow marker definition (moved to top) -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#333"/>
+    </marker>
+  </defs>
+  
+  <!-- Step 1: Room Creation -->
+  <rect x="50" y="50" width="150" height="60" rx="10" fill="#4facfe" stroke="#2196F3" stroke-width="2"/>
+  <text x="125" y="75" text-anchor="middle" fill="white" font-family="Arial" font-size="12" font-weight="bold">1. Room Creation</text>
+  <text x="125" y="90" text-anchor="middle" fill="white" font-family="Arial" font-size="10">Teacher starts session</text>
+  
+  <!-- Step 2: Student Entry -->
+  <rect x="250" y="50" width="150" height="60" rx="10" fill="#28a745" stroke="#198754" stroke-width="2"/>
+  <text x="325" y="75" text-anchor="middle" fill="white" font-family="Arial" font-size="12" font-weight="bold">2. Student Entry</text>
+  <text x="325" y="90" text-anchor="middle" fill="white" font-family="Arial" font-size="10">QR scan to session join</text>
+  
+  <!-- Step 3: Content Delivery -->
+  <rect x="450" y="50" width="150" height="60" rx="10" fill="#ff6b35" stroke="#e55a32" stroke-width="2"/>
+  <text x="525" y="75" text-anchor="middle" fill="white" font-family="Arial" font-size="12" font-weight="bold">3. Content Delivery</text>
+  <text x="525" y="90" text-anchor="middle" fill="white" font-family="Arial" font-size="10">Teacher selects content</text>
+  
+  <!-- Step 4: Real-time Communication -->
+  <rect x="50" y="170" width="150" height="60" rx="10" fill="#9c27b0" stroke="#8e24aa" stroke-width="2"/>
+  <text x="125" y="190" text-anchor="middle" fill="white" font-family="Arial" font-size="11" font-weight="bold">4. Communication</text>
+  <text x="125" y="205" text-anchor="middle" fill="white" font-family="Arial" font-size="10">Chat + AI assistance</text>
+  <text x="125" y="218" text-anchor="middle" fill="white" font-family="Arial" font-size="10">without leaving activity</text>
+  
+  <!-- Step 5: Response Collection -->
+  <rect x="250" y="170" width="150" height="60" rx="10" fill="#ffc107" stroke="#ffb300" stroke-width="2"/>
+  <text x="325" y="190" text-anchor="middle" fill="black" font-family="Arial" font-size="11" font-weight="bold">5. Data Collection</text>
+  <text x="325" y="205" text-anchor="middle" fill="black" font-family="Arial" font-size="10">All interactions</text>
+  <text x="325" y="218" text-anchor="middle" fill="black" font-family="Arial" font-size="10">flow to Firestore</text>
+  
+  <!-- Step 6: Conversation Analysis -->
+  <rect x="450" y="170" width="150" height="60" rx="10" fill="#e91e63" stroke="#c2185b" stroke-width="2"/>
+  <text x="525" y="190" text-anchor="middle" fill="white" font-family="Arial" font-size="11" font-weight="bold">6. Analysis</text>
+  <text x="525" y="205" text-anchor="middle" fill="white" font-family="Arial" font-size="10">Chat and AI interactions</text>
+  <text x="525" y="218" text-anchor="middle" fill="white" font-family="Arial" font-size="10">analyzed real-time</text>
+  
+  <!-- Step 7: Classroom Insights -->
+  <rect x="50" y="290" width="150" height="60" rx="10" fill="#607d8b" stroke="#546e7a" stroke-width="2"/>
+  <text x="125" y="310" text-anchor="middle" fill="white" font-family="Arial" font-size="11" font-weight="bold">7. Live Insights</text>
+  <text x="125" y="325" text-anchor="middle" fill="white" font-family="Arial" font-size="10">Teacher dashboard</text>
+  <text x="125" y="338" text-anchor="middle" fill="white" font-family="Arial" font-size="10">shows classroom state</text>
+  
+  <!-- Step 8: AI Analysis -->
+  <rect x="250" y="290" width="150" height="60" rx="10" fill="#795548" stroke="#6d4c41" stroke-width="2"/>
+  <text x="325" y="310" text-anchor="middle" fill="white" font-family="Arial" font-size="11" font-weight="bold">8. AI Processing</text>
+  <text x="325" y="325" text-anchor="middle" fill="white" font-family="Arial" font-size="10">Cloud functions</text>
+  <text x="325" y="338" text-anchor="middle" fill="white" font-family="Arial" font-size="10">generate insights</text>
+  
+  <!-- Step 9: Discussion Integration -->
+  <rect x="450" y="290" width="150" height="60" rx="10" fill="#3f51b5" stroke="#3949ab" stroke-width="2"/>
+  <text x="525" y="310" text-anchor="middle" fill="white" font-family="Arial" font-size="11" font-weight="bold">9. Integration</text>
+  <text x="525" y="325" text-anchor="middle" fill="white" font-family="Arial" font-size="10">Results feed back</text>
+  <text x="525" y="338" text-anchor="middle" fill="white" font-family="Arial" font-size="10">to next slide</text>
+  
+  <!-- Communication Cloud (center) -->
+  <ellipse cx="350" cy="450" rx="120" ry="80" fill="#e3f2fd" stroke="#1976d2" stroke-width="2" stroke-dasharray="5,5"/>
+  <text x="350" y="440" text-anchor="middle" fill="#1976d2" font-family="Arial" font-size="14" font-weight="bold">Real-time</text>
+  <text x="350" y="455" text-anchor="middle" fill="#1976d2" font-family="Arial" font-size="14" font-weight="bold">Communication</text>
+  <text x="350" y="475" text-anchor="middle" fill="#1976d2" font-family="Arial" font-size="12">Teacher Chat + AI</text>
+  
+  <!-- Arrows -->
+  <!-- Step 1 to 2 -->
+  <line x1="200" y1="80" x2="250" y2="80" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Step 2 to 3 -->
+  <line x1="400" y1="80" x2="450" y2="80" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Step 3 to 4 (down and left) -->
+  <path d="M 525 110 Q 525 140 250 140 Q 125 140 125 170" fill="none" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Step 4 to 5 -->
+  <line x1="200" y1="200" x2="250" y2="200" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Step 5 to 6 -->
+  <line x1="400" y1="200" x2="450" y2="200" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Step 6 to 7 (down and left) -->
+  <path d="M 525 230 Q 525 260 250 260 Q 125 260 125 290" fill="none" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Step 7 to 8 -->
+  <line x1="200" y1="320" x2="250" y2="320" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Step 8 to 9 -->
+  <line x1="400" y1="320" x2="450" y2="320" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Steps connecting to communication cloud -->
+  <line x1="125" y1="230" x2="270" y2="380" stroke="#1976d2" stroke-width="2" stroke-dasharray="3,3"/>
+  <line x1="325" y1="230" x2="350" y2="370" stroke="#1976d2" stroke-width="2" stroke-dasharray="3,3"/>
+  <line x1="525" y1="230" x2="430" y2="380" stroke="#1976d2" stroke-width="2" stroke-dasharray="3,3"/>
+  
+  <!-- Title -->
+  <text x="400" y="30" text-anchor="middle" fill="#333" font-family="Arial" font-size="18" font-weight="bold">Session Flow Process</text>
+  
+  <!-- Legend -->
+  <text x="650" y="400" fill="#666" font-family="Arial" font-size="12" font-weight="bold">Legend:</text>
+  <line x1="650" y1="420" x2="680" y2="420" stroke="#333" stroke-width="2"/>
+  <text x="690" y="425" fill="#666" font-family="Arial" font-size="10">Sequential Flow</text>
+  <line x1="650" y1="440" x2="680" y2="440" stroke="#1976d2" stroke-width="2" stroke-dasharray="3,3"/>
+  <text x="690" y="445" fill="#666" font-family="Arial" font-size="10">Communication Layer</text>
+</svg>

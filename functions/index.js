@@ -1,3 +1,12 @@
+/*
+ * Copyright © 2025 Meir Livneh. All Rights Reserved.
+ *
+ * This software and associated documentation files (the "Software") are proprietary and confidential.
+ * The Software is furnished under a license agreement and may be used or copied only in
+ * accordance with the terms of the agreement.
+ *
+ * Unauthorized copying of this file, via any medium, is strictly prohibited.
+ */
 // functions/index.js - askAI כפונקציה מרכזית שקוראת להגדרות החדר
 
 const {onCall} = require("firebase-functions/v2/https");
@@ -7,13 +16,18 @@ const {defineSecret} = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const https = require("https");
 
+
+
 // Initialize Firebase Admin SDK
 if (admin.apps.length === 0) {
   admin.initializeApp();
 }
-
-const DEPLOY_REGION = "europe-west1";
-
+//
+//========================= DEPLOYMENT AREA ===================================
+const DEPLOY_REGION = "us-central1";
+//const DEPLOY_REGION = "europe-west1";
+//=============================================================================
+//
 // Define secrets
 const geminiApiKey = defineSecret("GEMINI_API_KEY");
 const claudeApiKey = defineSecret("CLAUDE_API_KEY");

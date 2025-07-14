@@ -1,6 +1,6 @@
 =================================================================
 FireClass System - Complete Project Files
-Created: 2025-07-06 20:34:08
+Created: 2025-07-10 21:13:30
 Source Directory: public
 =================================================================
 
@@ -59,21 +59,15 @@ FILE: firebase-config.js
 FULL PATH: public\firebase-config.js
 =================================================================
 
-
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyAdRaBjmQMMVgAOYQVL9VFmeyfuDDd-_8c",
-  authDomain: "class-board-ad64e.firebaseapp.com",
-  projectId: "class-board-ad64e",
-  storageBucket: "class-board-ad64e.firebasestorage.app",
-  messagingSenderId: "715424421542",
-  appId: "1:715424421542:web:0e15f111f76ecd3604c667"
+var firebaseConfig = {
+  apiKey: "AIzaSyAyi3h3OZasXI123uA7X6YAbwPFgopgl_w",
+  authDomain: "fireclass-us.firebaseapp.com",
+  projectId: "fireclass-us",
+  storageBucket: "fireclass-us.appspot.com",
+  messagingSenderId: "600159423729",
+  appId: "1:600159423729:web:0d65fb1b01a67a127fed50",
+  measurementId: "G-Y7GYKR7LQD"
 };
-
-
 
 
 =================================================================
@@ -82,6 +76,15 @@ FULL PATH: public\index.html
 =================================================================
 
 <!DOCTYPE html>
+<!--
+ * Copyright © 2025 Meir Livneh. All Rights Reserved.
+ *
+ * This software and associated documentation files (the "Software") are proprietary and confidential.
+ * The Software is furnished under a license agreement and may be used or copied only in
+ * accordance with the terms of the agreement.
+ *
+ * Unauthorized copying of this file, via any medium, is strictly prohibited.
+-->
 <html lang="en" dir="ltr">
 <head>
     <meta charset="UTF-8">
@@ -545,6 +548,15 @@ FULL PATH: public\student-app.html
 =================================================================
 
 <!DOCTYPE html>
+<!--
+ * Copyright © 2025 Meir Livneh. All Rights Reserved.
+ *
+ * This software and associated documentation files (the "Software") are proprietary and confidential.
+ * The Software is furnished under a license agreement and may be used or copied only in
+ * accordance with the terms of the agreement.
+ *
+ * Unauthorized copying of this file, via any medium, is strictly prohibited.
+-->
 <html lang="en" dir="ltr">
 <head>
     <meta charset="UTF-8">
@@ -602,6 +614,16 @@ FULL PATH: public\student-app.html
 FILE: css\student-app.css
 FULL PATH: public\css\student-app.css
 =================================================================
+
+/*
+ * Copyright © 2025 Meir Livneh. All Rights Reserved.
+ *
+ * This software and associated documentation files (the "Software") are proprietary and confidential.
+ * The Software is furnished under a license agreement and may be used or copied only in
+ * accordance with the terms of the agreement.
+ *
+ * Unauthorized copying of this file, via any medium, is strictly prohibited.
+ */
 
 /* student-app.css - English LTR Version */
 
@@ -904,6 +926,16 @@ body, html {
 FILE: css\teacher-dashboard.css
 FULL PATH: public\css\teacher-dashboard.css
 =================================================================
+
+/*
+ * Copyright © 2025 Meir Livneh. All Rights Reserved.
+ *
+ * This software and associated documentation files (the "Software") are proprietary and confidential.
+ * The Software is furnished under a license agreement and may be used or copied only in
+ * accordance with the terms of the agreement.
+ *
+ * Unauthorized copying of this file, via any medium, is strictly prohibited.
+ */
 
 /* teacher-dashboard.css - English LTR Version */
 
@@ -1895,6 +1927,16 @@ FILE: js\ClassroomSDK.js
 FULL PATH: public\js\ClassroomSDK.js
 =================================================================
 
+/*
+ * Copyright © 2025 Meir Livneh. All Rights Reserved.
+ *
+ * This software and associated documentation files (the "Software") are proprietary and confidential.
+ * The Software is furnished under a license agreement and may be used or copied only in
+ * accordance with the terms of the agreement.
+ *
+ * Unauthorized copying of this file, via any medium, is strictly prohibited.
+ */
+
 // SIMPLIFIED CLASSROOM SDK - 4-DIGIT ROOM CODES ONLY!
 
 class ClassroomSDK {
@@ -1902,7 +1944,7 @@ class ClassroomSDK {
         try {
             this.db = firebase.firestore();
             this.auth = firebase.auth();
-            this.functions = firebase.app().functions('europe-west1');
+            this.functions = firebase.app().functions();
             console.log('✅ Firebase services initialized in constructor.');
         } catch (e) {
             console.error("❌ CRITICAL: Could not initialize Firebase services.", e);
@@ -2611,47 +2653,21 @@ class ClassroomSDK {
     }
 
     async submitPollAnswer(answer) {
-        if (!this.auth.currentUser && !this.studentId) {
-            console.error("No user or studentId to submit answer.");
+        if (!this.functions) {
+            console.error("Firebase Functions is not initialized.");
             return;
         }
-
-        const roomRef = this.db.collection('rooms').doc(this.roomCode);
         try {
-            await this.db.runTransaction(async (transaction) => {
-                const roomDoc = await transaction.get(roomRef);
-                if (!roomDoc.exists) throw "Room does not exist!";
-
-                const currentPoll = roomDoc.data().settings.currentPoll;
-                if (!currentPoll || !currentPoll.isActive) {
-                    console.log("No active poll to answer.");
-                    return;
-                }
-
-                // Create an update object
-                const updateData = {
-                    // *** THE FIX: Add a top-level timestamp update ***
-                    // This "shouts" to Firestore that a change occurred, ensuring the listener fires reliably.
-                    'settings.last_poll_activity': firebase.firestore.FieldValue.serverTimestamp()
-                };
-
-                if (currentPoll.type === 'open_text') {
-                    const studentIdentifier = this.playerName.replace(/[.#$[\]]/g, '_');
-                    const responseField = `settings.currentPoll.responses.${studentIdentifier}`;
-                    updateData[responseField] = firebase.firestore.FieldValue.arrayUnion(answer);
-                } else { // Handle multiple choice / yes-no
-                    const studentIdentifier = this.studentId;
-                    const responseField = `settings.currentPoll.responses.${studentIdentifier}`;
-                    updateData[responseField] = answer;
-                }
-
-                // Perform a single transaction update with all changes
-                transaction.update(roomRef, updateData);
+            const submitAnswerFunction = this.functions.httpsCallable('submitPollAnswer');
+            await submitAnswerFunction({
+                roomCode: this.roomCode,
+                studentId: this.studentId,
+                playerName: this.playerName,
+                answer: answer
             });
-
-            console.log("✅ Poll answer submitted successfully");
-        } catch (e) {
-            console.error("Poll submission failed: ", e);
+            console.log("✅ Poll answer successfully sent via Cloud Function.");
+        } catch (error) {
+            console.error("🔥 Error calling submitPollAnswer cloud function:", error);
         }
     }
 
@@ -2741,6 +2757,15 @@ FILE: js\student-app.js
 FULL PATH: public\js\student-app.js
 =================================================================
 
+/*
+ * Copyright © 2025 Meir Livneh. All Rights Reserved.
+ *
+ * This software and associated documentation files (the "Software") are proprietary and confidential.
+ * The Software is furnished under a license agreement and may be used or copied only in
+ * accordance with the terms of the agreement.
+ *
+ * Unauthorized copying of this file, via any medium, is strictly prohibited.
+ */
 // ================== START OF FILE: public/js/student-app.js (COMPLETE AND FIXED) ==================
 const App = {
     classroom: null,
@@ -2942,6 +2967,15 @@ FILE: js\teacher-dashboard.js
 FULL PATH: public\js\teacher-dashboard.js
 =================================================================
 
+/*
+ * Copyright © 2025 Meir Livneh. All Rights Reserved.
+ *
+ * This software and associated documentation files (the "Software") are proprietary and confidential.
+ * The Software is furnished under a license agreement and may be used or copied only in
+ * accordance with the terms of the agreement.
+ *
+ * Unauthorized copying of this file, via any medium, is strictly prohibited.
+ */
 // teacher-dashboard.js - English version with advanced AI selection menu
 
 class TeacherDashboard {
@@ -4360,5 +4394,5 @@ function debugClassroom() {
 END OF PROJECT FILES
 Total files processed: 9
 Total files skipped: 0
-Generated: 2025-07-06 20:34:08
+Generated: 2025-07-10 21:13:30
 =================================================================

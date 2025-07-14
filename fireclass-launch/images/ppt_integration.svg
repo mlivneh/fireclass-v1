@@ -1,0 +1,141 @@
+<svg width="800" height="500" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="800" height="500" fill="#f8f9fa"/>
+  
+  <!-- Arrow marker definition -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#333"/>
+    </marker>
+    <marker id="magic" markerWidth="30" markerHeight="30" refX="15" refY="15" orient="auto">
+      <circle cx="15" cy="15" r="12" fill="#ff6b35" stroke="#e55a32" stroke-width="2"/>
+      <text x="15" y="19" text-anchor="middle" fill="white" font-family="Arial" font-size="10">✨</text>
+    </marker>
+  </defs>
+  
+  <!-- PowerPoint Slide (Before) -->
+  <g id="powerpoint-slide">
+    <rect x="50" y="80" width="250" height="180" rx="10" fill="#ffffff" stroke="#d73527" stroke-width="3"/>
+    
+    <!-- PowerPoint header -->
+    <rect x="50" y="80" width="250" height="30" rx="10" fill="#d73527"/>
+    <rect x="50" y="100" width="250" height="10" fill="#d73527"/>
+    <text x="175" y="100" text-anchor="middle" fill="white" font-family="Arial" font-size="12" font-weight="bold">PowerPoint</text>
+    
+    <!-- Slide content -->
+    <text x="175" y="140" text-anchor="middle" fill="#333" font-family="Arial" font-size="16" font-weight="bold">Lesson: Face Recognition</text>
+    <text x="175" y="165" text-anchor="middle" fill="#666" font-family="Arial" font-size="12">• How do computers recognize faces?</text>
+    <text x="175" y="180" text-anchor="middle" fill="#666" font-family="Arial" font-size="12">• What are geometric features?</text>
+    <text x="175" y="195" text-anchor="middle" fill="#666" font-family="Arial" font-size="12">• Let's explore with Homer Simpson!</text>
+    
+    <!-- The Magic Button -->
+    <rect x="140" y="215" width="70" height="25" rx="12" fill="#ff6b35" stroke="#e55a32" stroke-width="2"/>
+    <text x="175" y="231" text-anchor="middle" fill="white" font-family="Arial" font-size="10" font-weight="bold">🎮 Launch</text>
+    
+    <!-- Click indicator -->
+    <circle cx="220" cy="227" r="15" fill="none" stroke="#ff6b35" stroke-width="2" stroke-dasharray="5,5" opacity="0.7">
+      <animate attributeName="r" values="15;25;15" dur="2s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.7;0.3;0.7" dur="2s" repeatCount="indefinite"/>
+    </circle>
+    
+    <text x="175" y="280" text-anchor="middle" fill="#d73527" font-family="Arial" font-size="12" font-weight="bold">Traditional Slide</text>
+    <text x="175" y="295" text-anchor="middle" fill="#666" font-family="Arial" font-size="10">Static content + one-way presentation</text>
+  </g>
+  
+  <!-- Magic Arrow -->
+  <path d="M 320 150 Q 380 120 440 150" fill="none" stroke="#ff6b35" stroke-width="4" marker-end="url(#magic)"/>
+  <text x="380" y="110" text-anchor="middle" fill="#ff6b35" font-family="Arial" font-size="14" font-weight="bold">One Click</text>
+  <text x="380" y="125" text-anchor="middle" fill="#ff6b35" font-family="Arial" font-size="12">VBA Macro</text>
+  
+  <!-- Interactive Classroom (After) -->
+  <g id="interactive-classroom">
+    <rect x="500" y="50" width="250" height="250" rx="10" fill="#e8f5e9" stroke="#4caf50" stroke-width="3"/>
+    
+    <!-- Dashboard header -->
+    <rect x="500" y="50" width="250" height="30" rx="10" fill="#4caf50"/>
+    <rect x="500" y="70" width="250" height="10" fill="#4caf50"/>
+    <text x="625" y="70" text-anchor="middle" fill="white" font-family="Arial" font-size="12" font-weight="bold">fireClass Control</text>
+    
+    <!-- Room code display -->
+    <rect x="520" y="90" width="80" height="25" rx="5" fill="white" stroke="#4caf50" stroke-width="1"/>
+    <text x="560" y="106" text-anchor="middle" fill="#4caf50" font-family="Arial" font-size="12" font-weight="bold">Room: 5503</text>
+    
+    <!-- QR Code -->
+    <rect x="610" y="90" width="25" height="25" rx="2" fill="#333"/>
+    <rect x="615" y="95" width="15" height="15" fill="white"/>
+    <rect x="617" y="97" width="3" height="3" fill="#333"/>
+    <rect x="625" y="97" width="3" height="3" fill="#333"/>
+    <rect x="617" y="105" width="3" height="3" fill="#333"/>
+    <rect x="625" y="105" width="3" fill="#333"/>
+    
+    <!-- Students connected -->
+    <text x="520" y="135" fill="#2e7d32" font-family="Arial" font-size="11" font-weight="bold">👥 Students Connected (3)</text>
+    <rect x="520" y="140" width="50" height="15" rx="3" fill="#bbdefb"/>
+    <text x="545" y="150" text-anchor="middle" fill="#1976d2" font-family="Arial" font-size="9">Alice</text>
+    <rect x="575" y="140" width="50" height="15" rx="3" fill="#bbdefb"/>
+    <text x="600" y="150" text-anchor="middle" fill="#1976d2" font-family="Arial" font-size="9">Bob</text>
+    <rect x="630" y="140" width="50" height="15" rx="3" fill="#bbdefb"/>
+    <text x="655" y="150" text-anchor="middle" fill="#1976d2" font-family="Arial" font-size="9">Carol</text>
+    
+    <!-- Content delivery -->
+    <text x="520" y="175" fill="#2e7d32" font-family="Arial" font-size="11" font-weight="bold">📤 Active Content</text>
+    <rect x="520" y="180" width="200" height="20" rx="5" fill="#fff3e0" stroke="#ff9800"/>
+    <text x="525" y="192" fill="#e65100" font-family="Arial" font-size="9">🧠 AI Face Recognition Lab</text>
+    
+    <!-- Real-time data -->
+    <text x="520" y="215" fill="#2e7d32" font-family="Arial" font-size="11" font-weight="bold">📊 Live Data</text>
+    <rect x="520" y="220" width="210" height="35" rx="5" fill="#e3f2fd" stroke="#2196f3"/>
+    <text x="525" y="232" fill="#1565c0" font-family="Arial" font-size="9">💬 "I found 3 geometric features!"</text>
+    <text x="525" y="242" fill="#1565c0" font-family="Arial" font-size="9">🤖 AI: "Great! Try measuring ratios..."</text>
+    <text x="525" y="252" fill="#1565c0" font-family="Arial" font-size="9">📈 Poll: 80% understand basic concept</text>
+    
+    <!-- Control buttons -->
+    <circle cx="680" cy="270" r="15" fill="#2196f3"/>
+    <text cx="680" cy="275" text-anchor="middle" fill="white" font-family="Arial" font-size="10">💬</text>
+    <circle cx="705" cy="270" r="15" fill="#4caf50"/>
+    <text cx="705" cy="275" text-anchor="middle" fill="white" font-family="Arial" font-size="10">🤖</text>
+    <circle cx="730" cy="270" r="15" fill="#ff9800"/>
+    <text cx="730" cy="275" text-anchor="middle" fill="white" font-family="Arial" font-size="10">📊</text>
+    
+    <text x="625" y="320" text-anchor="middle" fill="#2e7d32" font-family="Arial" font-size="12" font-weight="bold">Interactive Classroom</text>
+    <text x="625" y="335" text-anchor="middle" fill="#666" font-family="Arial" font-size="10">Real-time engagement + data-driven insights</text>
+  </g>
+  
+  <!-- Student devices indicator -->
+  <g id="student-devices">
+    <!-- Phone 1 -->
+    <rect x="520" y="370" width="40" height="60" rx="8" fill="#333" stroke="#666"/>
+    <rect x="525" y="375" width="30" height="50" rx="3" fill="white"/>
+    <rect x="527" y="378" width="26" height="15" rx="2" fill="#007bff" opacity="0.7"/>
+    <text x="540" y="405" text-anchor="middle" fill="#333" font-family="Arial" font-size="6">Alice</text>
+    <circle cx="545" cy="415" r="3" fill="#4caf50"/>
+    
+    <!-- Phone 2 -->
+    <rect x="580" y="370" width="40" height="60" rx="8" fill="#333" stroke="#666"/>
+    <rect x="585" y="375" width="30" height="50" rx="3" fill="white"/>
+    <rect x="587" y="378" width="26" height="15" rx="2" fill="#007bff" opacity="0.7"/>
+    <text x="600" y="405" text-anchor="middle" fill="#333" font-family="Arial" font-size="6">Bob</text>
+    <circle cx="605" cy="415" r="3" fill="#4caf50"/>
+    
+    <!-- Phone 3 -->
+    <rect x="640" y="370" width="40" height="60" rx="8" fill="#333" stroke="#666"/>
+    <rect x="645" y="375" width="30" height="50" rx="3" fill="white"/>
+    <rect x="647" y="378" width="26" height="15" rx="2" fill="#007bff" opacity="0.7"/>
+    <text x="660" y="405" text-anchor="middle" fill="#333" font-family="Arial" font-size="6">Carol</text>
+    <circle cx="665" cy="415" r="3" fill="#4caf50"/>
+    
+    <text x="600" y="450" text-anchor="middle" fill="#666" font-family="Arial" font-size="10">Students working with AI Face Recognition</text>
+  </g>
+  
+  <!-- Title -->
+  <text x="400" y="30" text-anchor="middle" fill="#333" font-family="Arial" font-size="20" font-weight="bold">PowerPoint to Interactive Classroom</text>
+  
+  <!-- Code snippet box -->
+  <rect x="50" y="350" width="400" height="100" rx="5" fill="#2d3748" stroke="#4a5568"/>
+  <text x="60" y="370" fill="#a0aec0" font-family="Courier New" font-size="10">VBA Macro Code:</text>
+  <text x="60" y="385" fill="#68d391" font-family="Courier New" font-size="9">Sub dashboard()</text>
+  <text x="70" y="400" fill="#f7fafc" font-family="Courier New" font-size="9">dashboardUrl = "https://class-board-ad64e.web.app"</text>
+  <text x="70" y="415" fill="#f7fafc" font-family="Courier New" font-size="9">ActivePresentation.FollowHyperlink Address:=dashboardUrl</text>
+  <text x="60" y="430" fill="#68d391" font-family="Courier New" font-size="9">End Sub</text>
+  <text x="60" y="445" fill="#a0aec0" font-family="Courier New" font-size="8">• Add button to any slide • One click = instant classroom</text>
+</svg>

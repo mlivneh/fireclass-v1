@@ -1,3 +1,12 @@
+/*
+ * Copyright © 2025 Meir Livneh. All Rights Reserved.
+ *
+ * This software and associated documentation files (the "Software") are proprietary and confidential.
+ * The Software is furnished under a license agreement and may be used or copied only in
+ * accordance with the terms of the agreement.
+ *
+ * Unauthorized copying of this file, via any medium, is strictly prohibited.
+ */
 // ================== START OF FILE: public/js/student-app.js (COMPLETE AND FIXED) ==================
 const App = {
     classroom: null,

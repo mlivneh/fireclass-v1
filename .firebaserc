@@ -1,6 +1,7 @@
 {
   "projects": {
-    "default": "class-board-ad64e"
+    "default": "class-board-ad64e",
+    "us": "fireclass-us"
   },
   "targets": {},
   "etags": {}

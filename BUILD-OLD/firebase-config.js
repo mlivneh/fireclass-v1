@@ -7,3 +7,6 @@ var firebaseConfig = {
   appId: "1:600159423729:web:0d65fb1b01a67a127fed50",
   measurementId: "G-Y7GYKR7LQD"
 };
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+// The line "firebase.analytics();" has been removed. It's not needed.
