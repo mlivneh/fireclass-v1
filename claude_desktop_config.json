@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "fireclass-filesystem": {
+      "command": "npx",
+      "args": [
+        "@modelcontextprotocol/server-filesystem",
+        "."
+      ]
+    }
+  }
+}

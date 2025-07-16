@@ -1,0 +1,16 @@
+{
+  "defaultLanguage": "en",
+  "supportedLanguages": [
+    "en",
+    "he",
+    "ar",
+    "es",
+    "fr"
+  ],
+  "fallbackLanguage": "en",
+  "autoDetect": true,
+  "rtlLanguages": [
+    "he",
+    "ar"
+  ]
+}
