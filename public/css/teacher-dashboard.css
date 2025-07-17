@@ -991,3 +991,311 @@ body {
 #classroom-chat-container {
     z-index: 10001 !important;
 }
+
+/* ================================================= */
+/* ========== NEW HEADER STYLES - OVERHAUL ========= */
+/* ================================================= */
+
+/* 1. Fix Header Overflow & Layout */
+.nav-container {
+    justify-content: normal;
+    gap: 15px; /* Reduced gap */
+}
+
+.header-left, .header-right {
+    display: flex;
+    align-items: center;
+    gap: 15px; /* Reduced gap */
+    flex-shrink: 0;
+}
+
+.header-center {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    min-width: 0;
+}
+
+.nav-link {
+    padding: 12px 15px; /* Reduced padding */
+}
+
+/* 2. Redesigned Connection Status Indicator */
+.status-indicator {
+    display: none;
+}
+
+#connectionStatus {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #f39c12;
+    transition: all 0.3s ease;
+    cursor: help;
+    animation: pulse 2s infinite;
+}
+
+#connectionStatus.connected {
+    background-color: #27ae60;
+    box-shadow: 0 0 10px #27ae60;
+}
+
+#connectionStatus.disconnected {
+    background-color: #e74c3c;
+    box-shadow: 0 0 10px #e74c3c;
+}
+
+/* 3. New Action Buttons */
+#resetScreensBtn {
+    display: none !important;
+}
+
+.dropdown-action-btn {
+    position: relative;
+}
+
+.main-action-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    color: white;
+    border: 2px solid white;
+    font-size: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+}
+
+.main-action-icon.green {
+    background: #27ae60; /* Green color for logout */
+}
+
+.main-action-icon.green:hover {
+    background: #229954; /* Darker green */
+    transform: scale(1.1);
+}
+
+.dropdown-action-btn .main-action-icon {
+    background: #e74c3c;
+}
+
+.dropdown-action-btn:hover .main-action-icon {
+    transform: scale(1.1) rotate(90deg);
+    background: #c0392b;
+}
+
+.dropdown-action-btn .dropdown {
+    left: auto;
+    right: 0;
+    top: 90%;
+}
+
+.dropdown-action-btn:hover .dropdown {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* ================================================= */
+/* ============ NEW LOGIN SCREEN STYLES ============ */
+/* ================================================= */
+
+.login-overlay {
+    display: flex; /* This will be controlled by JS */
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+.login-box {
+    background: rgba(255, 255, 255, 0.95);
+    padding: 40px 50px;
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    max-width: 450px;
+}
+.login-box p {
+    margin-top: 10px;
+    color: #555;
+}
+.signin-options-title {
+    margin: 30px 0 15px 0;
+    color: #333;
+    font-weight: 500;
+    text-transform: uppercase;
+    font-size: 14px;
+    letter-spacing: 1px;
+}
+.signin-options {
+    display: flex;
+    justify-content: center;
+    gap: 25px;
+}
+.signin-btn {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    border: 1px solid #ddd;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 15px;
+}
+.signin-btn:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    border-color: #aaa;
+}
+.signin-btn img {
+    width: 100%;
+    height: auto;
+}
+
+/* =========================================================== */
+/* ========= CONTENT & PROMPT MANAGER MODAL STYLES V2 ======== */
+/* =========================================================== */
+
+/* Main modal body layout */
+.modal-body {
+    /* Ensure it can grow */
+    flex-grow: 1;
+    overflow-y: hidden; /* Prevent double scrollbars */
+}
+
+/* Tabs */
+.tabs {
+    display: flex;
+    border-bottom: 1px solid #eee;
+    background: #f8f9fa;
+    flex-shrink: 0; /* Prevent tabs from shrinking */
+}
+.tab-link {
+    padding: 15px 20px;
+    cursor: pointer;
+    border: none;
+    background: none;
+    font-size: 16px;
+    font-weight: 500;
+    color: #555;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s ease;
+}
+.tab-link:hover { background: #e9ecef; }
+.tab-link.active {
+    color: #007bff;
+    border-bottom-color: #007bff;
+}
+
+/* Tab Content Layout */
+.tab-content {
+    display: none;
+    height: 100%;
+    overflow: hidden;
+}
+.tab-content.active {
+    display: block;
+}
+
+/* Two Column Grid Layout */
+.two-column-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 25px;
+    height: 100%;
+    padding: 25px;
+}
+
+.column-left, .column-right {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.column-left.scrollable {
+    overflow-y: auto; /* Enable scrolling only for the left column */
+}
+
+.column-right h4, .column-left h4 {
+    flex-shrink: 0;
+    margin-bottom: 15px;
+}
+
+/* List styling */
+.content-list {
+    border: 1px solid #eee;
+    border-radius: 8px;
+    flex-grow: 1; /* Make list take up space */
+}
+.list-item {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+}
+.list-item:last-child { border-bottom: none; }
+.list-item-icon { font-size: 24px; margin-right: 15px; }
+.list-item-details { flex-grow: 1; }
+.list-item-title { font-weight: 600; }
+.list-item-desc {
+    font-size: 13px;
+    color: #666;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 300px;
+}
+.list-item-actions button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    margin-left: 10px;
+    padding: 5px;
+    transition: color 0.2s;
+}
+.list-item-actions .edit-btn:hover { color: #007bff; }
+.list-item-actions .delete-btn:hover { color: #e74c3c; }
+
+/* Form styling */
+#personal-content-form, #personal-prompt-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+#content-manager-modal input,
+#content-manager-modal textarea,
+#content-manager-modal select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 14px;
+}
+#content-manager-modal button {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    background: #007bff;
+    color: white;
+    transition: background 0.2s;
+}
+#content-manager-modal button:hover { background: #0056b3; }
+#content-manager-modal button.secondary { background: #6c757d; }
+#content-manager-modal button.secondary:hover { background: #5a6268; }
+
+/* Prompt Wizard Specifics */
+.prompt-wizard p {
+    margin: 0 0 5px 0;
+    font-weight: 500;
+}

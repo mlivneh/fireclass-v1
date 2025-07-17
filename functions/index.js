@@ -40,87 +40,75 @@ exports.askAI = onCall({
   region: DEPLOY_REGION,
   secrets: [geminiApiKey, claudeApiKey, openaiApiKey]
 }, async (request) => {
-  console.log("🎯 askAI called with:", request.data);
-  
+  console.log("🎯 askAI v2 called with:", request.data);
+
   if (!request.auth) {
-    console.error("❌ No authentication provided");
     throw new HttpsError("unauthenticated", "Authentication required");
   }
 
   let prompt = request.data.prompt;
   const roomCode = request.data.roomCode;
   const language = request.data.language;
-  
+  const bypassContext = request.data.bypassContext || false;
+
   if (!prompt || !roomCode) {
-    console.error("❌ No prompt or roomCode provided");
     throw new HttpsError("invalid-argument", "Prompt and roomCode are required");
   }
 
-  // 🎯 עטיפת הפרומפט לפי שפה
-  if (language === 'he') {
-    prompt = `Please answer the following prompt in Hebrew:\n\n"${prompt}"`;
-  } else {
-    prompt = `Please answer the following prompt in English:\n\n"${prompt}"`;
-  }
-
   try {
-    const roomRef = admin.firestore().collection('rooms').doc(roomCode);
+    const db = admin.firestore();
+    const roomRef = db.collection('rooms').doc(roomCode);
     const roomDoc = await roomRef.get();
-    
+
     if (!roomDoc.exists) {
-      console.error("❌ Room not found:", roomCode);
       throw new HttpsError("not-found", "Room not found");
     }
-    
+
     const roomData = roomDoc.data();
-    
-    // 🎯 --- תחילת הלוגיקה החדשה ---
     const teacherUid = roomData.teacher_uid;
     const isTeacherRequest = request.auth.uid === teacherUid;
-    const aiActive = roomData.settings?.ai_active === true;
-    
-    console.log(`Request Details: isTeacher=${isTeacherRequest}, aiActiveForStudents=${aiActive}`);
-    
-    // אם הבקשה היא לא מהמורה, וגם ה-AI כבוי לתלמידים - חסום את הבקשה.
-    if (!isTeacherRequest && !aiActive) {
-      console.log("🔴 AI request blocked for student (AI is off).");
+
+    if (!isTeacherRequest && !roomData.settings?.ai_active) {
       throw new HttpsError("failed-precondition", "AI is disabled for this classroom");
     }
-    // 🎯 --- סוף הלוגיקה החדשה ---
-    
-    const selectedModel = roomData.settings?.ai_model || 'chatgpt';
-    console.log(`🎯 Room ${roomCode} selected model: ${selectedModel}`);
-    
+
+    const selectedModel = roomData.settings?.ai_model || 'gemini';
+    let finalPrompt = prompt;
+
+    // Apply context ONLY if it's a student request AND context is not bypassed
+    if (!isTeacherRequest && !bypassContext) {
+        const activePromptId = roomData.settings?.active_prompt_id;
+        if (activePromptId) {
+            const promptDoc = await db.collection('teachers').doc(teacherUid).collection('personal_prompts').doc(activePromptId).get();
+            if (promptDoc.exists) {
+                const systemPrompt = promptDoc.data().prompt;
+                finalPrompt = `${systemPrompt}\n\nStudent's question: "${prompt}"`;
+                console.log(`Applying context: ${promptDoc.data().title}`);
+            }
+        }
+    } else {
+        console.log("Context bypassed for teacher or explicit request.");
+    }
+
+    // Language wrapping
+    if (language === 'he') {
+        finalPrompt = `Please answer the following prompt in Hebrew:\n\n"${finalPrompt}"`;
+    }
+
     let result;
     switch (selectedModel) {
-      case 'chatgpt':
-        result = await callChatGPT(prompt);
-        break;
-      case 'claude':
-        result = await callClaude(prompt);
-        break;
-      case 'gemini':
-        result = await callGemini(prompt);
-        break;
-      default:
-        console.log(`⚠️ Unknown model ${selectedModel}, falling back to ChatGPT`);
-        result = await callChatGPT(prompt);
-        break;
+      case 'chatgpt': result = await callChatGPT(finalPrompt); break;
+      case 'claude': result = await callClaude(finalPrompt); break;
+      default: result = await callGemini(finalPrompt); break;
     }
-    
+
     await roomRef.update({ 'last_activity': admin.firestore.FieldValue.serverTimestamp() });
-    
-    console.log(`✅ AI response generated successfully using ${selectedModel}`);
-    return { 
-      result: result.text, 
-      model: result.modelName 
-    };
-    
+
+    return { result: result.text, model: result.modelName };
+
   } catch (error) {
     console.error("❌ Error in askAI:", error);
-    if (error instanceof HttpsError) {
-      throw error;
-    }
+    if (error instanceof HttpsError) throw error;
     throw new HttpsError("internal", "Internal server error");
   }
 });

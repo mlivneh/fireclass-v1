@@ -46,18 +46,6 @@ class ClassroomSDK {
         this.roomListener = null;
     }
 
-    // Anonymous authentication
-    async loginAnonymously() {
-        try {
-            const userCredential = await this.auth.signInAnonymously();
-            console.log('✅ Anonymous login successful:', userCredential.user.uid);
-            return userCredential.user;
-        } catch (error) {
-            console.error('🔥 Anonymous login failed:', error);
-            throw error;
-        }
-    }
-
     // Generate unique 4-digit room code
     async generateUniqueRoomCode() {
         let attempts = 0;
@@ -524,15 +512,12 @@ class ClassroomSDK {
         return document.documentElement.lang || 'en';
     }
 
-    async sendAIMessage(prompt, language) {
-        // Check if AI is disabled for students
+    async sendAIMessage(prompt, language, bypassContext = false) {
         if (!this.isTeacher && !this.isAiActiveForClass) {
             this.addAIMessage("🤖", "AI is not available at the moment.", false);
             return;
         }
-
         if (!language) language = this.getInterfaceLanguage();
-
         if (!this.functions) {
             this.addAIMessage("🤖", "Error: AI service not initialized", false);
             return;
@@ -541,16 +526,19 @@ class ClassroomSDK {
 
         try {
             const askAIFunction = this.functions.httpsCallable('askAI');
-            const result = await askAIFunction({ prompt, roomCode: this.roomCode, language });
+            const result = await askAIFunction({ 
+                prompt, 
+                roomCode: this.roomCode, 
+                language,
+                bypassContext // New parameter
+            });
             const senderName = result.data.model ? `🤖 (${result.data.model})` : "🤖";
             this.addAIMessage(senderName, result.data.result, false);
+            return result.data; // Return the full result object
         } catch (error) {
             console.error("🔥 Error calling askAI:", error);
-            let errorMsg = "An error occurred with the AI service.";
-            if (error.code === 'functions/unauthenticated') {
-                errorMsg = "Authentication error. Please reconnect.";
-            }
-            this.addAIMessage("🤖", errorMsg, false);
+            this.addAIMessage("🤖", `Error: ${error.message}`, false);
+            return null;
         }
     }
 

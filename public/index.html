@@ -20,201 +20,145 @@
     <div id="loading-overlay">
         <div class="spinner"></div>
     </div>
-    <!-- Header with Professional Navigation -->
-    <header class="header">
-        <div class="nav-container">
+    <!-- ==================== NEW LOGIN SCREEN START ==================== -->
+<div id="login-container" class="login-overlay" style="display: none;">
+    <div class="login-box">
+        <div class="logo">
+            <span class="logo-icon">⚙️</span>
+            <span class="logo-text">fireClass Control</span>
+        </div>
+        <p>Welcome, please sign in to continue.</p>
+
+        <div class="signin-options-title">Signin Options</div>
+
+        <div class="signin-options">
+            <button id="google-signin-btn" class="signin-btn" title="Sign in with Google">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google Logo">
+            </button>
+            <button id="microsoft-signin-btn" class="signin-btn" title="Sign in with Microsoft">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg" alt="Microsoft Logo">
+            </button>
+        </div>
+    </div>
+</div>
+<!-- ===================== NEW LOGIN SCREEN END ===================== -->
+
+    <!-- ==================== NEW HEADER START ==================== -->
+<header class="header">
+    <div class="nav-container">
+        <!-- Left Side: Logo and Room Code -->
+        <div class="header-left">
             <div class="logo">
                 <span class="logo-icon">⚙️</span>
                 <span class="logo-text">fireClass Control</span>
             </div>
-            
             <div id="header-room-display" class="header-room-display">
-                <span class="room-code-label">Room Code:</span>
+                <span class="room-code-label">Room:</span>
                 <span id="header-room-code" class="room-code-value">...</span>
-                <img id="qr-code-image" class="qr-code" alt="QR Code for Classroom" title="Click to copy student link"/>
-            </div>
-            
-            <nav>
-                <ul class="nav-menu">
-                    <!-- Quick Actions -->
-                    <li class="nav-item">
-                        <a href="#" class="nav-link">
-                            <span class="nav-icon">⚡</span>
-                            <span>Quick Actions</span>
-                        </a>
-                        <div class="dropdown">
-                            <div class="dropdown-header">Quick actions for lesson management</div>
-                            <a href="#" class="dropdown-item success-item" onclick="sendQuickMessage('Let\'s start the lesson!')">
-                                <span class="dropdown-icon">🎓</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">Start Lesson</div>
-                                    <div class="dropdown-desc">Send message to all students</div>
-                                </div>
-                            </a>
-                            <a href="#" class="dropdown-item warning-item" onclick="sendQuickMessage('Time for a break! Come back in 5 minutes.')">
-                                <span class="dropdown-icon">☕</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">Break Time</div>
-                                    <div class="dropdown-desc">Announce break time</div>
-                                </div>
-                            </a>
-                            <a href="#" class="dropdown-item" onclick="sendQuickMessage('The lesson has ended. Well done everyone!')">
-                                <span class="dropdown-icon">✅</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">End Lesson</div>
-                                    <div class="dropdown-desc">Finish the lesson</div>
-                                </div>
-                            </a>
-                            <a href="#" class="dropdown-item danger-item" onclick="resetClassroomData()">
-                                <span class="dropdown-icon">🔄</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">New Lesson</div>
-                                    <div class="dropdown-desc">Clear all lesson data</div>
-                                </div>
-                            </a>
-                        </div>
-                    </li>
-
-                    <!-- Games and Content -->
-                    <li class="nav-item">
-                        <a href="#" class="nav-link" onclick="window.teacherDashboard.openContentModal()">
-                            <span class="nav-icon">🎮</span>
-                            <span>Games & Content</span>
-                        </a>
-                    </li>
-
-                    <!-- AI Management -->
-                    <li class="nav-item">
-                        <a href="#" class="nav-link" id="aiMenuLink">
-                            <span class="nav-icon">🤖</span>
-                            <span>AI Management</span>
-                        </a>
-                        <div class="dropdown">
-                            <div class="dropdown-header">AI Assistant settings for students</div>
-                            
-                            <a href="#" class="dropdown-item" id="toggleAI" onclick="console.log('🟢 TRACE: AI button clicked'); window.teacherDashboard.toggleAIForClass()">
-                                <span class="dropdown-icon" id="aiStatusIcon">🔴</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title" id="aiStatusText">AI disabled for students</div>
-                                    <div class="dropdown-desc">Click to enable</div>
-                                </div>
-                            </a>
-                            
-                            <div style="padding: 10px 20px; border-top: 1px solid #f0f2f5; background: #f8f9fa;">
-                                <strong style="font-size: 14px; color: #555;">🎯 Select model for class:</strong>
-                                <div style="font-size: 12px; color: #777; margin-top: 2px;">Current model: <span class="current-ai-model">ChatGPT</span></div>
-                            </div>
-                            
-                            <a href="#" class="dropdown-item ai-model-btn" data-model="chatgpt" onclick="window.teacherDashboard.switchAIModel('chatgpt')">
-                                <span class="dropdown-icon">🤖</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">ChatGPT</div>
-                                    <div class="dropdown-desc">Advanced model from OpenAI</div>
-                                </div>
-                            </a>
-                            
-                            <a href="#" class="dropdown-item ai-model-btn" data-model="claude" onclick="window.teacherDashboard.switchAIModel('claude')">
-                                <span class="dropdown-icon">🧠</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">Claude</div>
-                                    <div class="dropdown-desc">Smart model from Anthropic</div>
-                                </div>
-                            </a>
-                            
-                            <a href="#" class="dropdown-item ai-model-btn" data-model="gemini" onclick="window.teacherDashboard.switchAIModel('gemini')">
-                                <span class="dropdown-icon">✨</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">Gemini</div>
-                                    <div class="dropdown-desc">Google's model</div>
-                                </div>
-                            </a>
-                        </div>
-                    </li>
-
-                    <!-- Tools -->
-                    <li class="nav-item">
-                        <a href="#" class="nav-link">
-                            <span class="nav-icon">🔧</span>
-                            <span>Tools</span>
-                        </a>
-                        <div class="dropdown">
-                            <div class="dropdown-header">Utilities and debugging tools</div>
-                            <a href="#" class="dropdown-item" onclick="toggleDebug()">
-                                <span class="dropdown-icon">🐛</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">Debug Console</div>
-                                    <div class="dropdown-desc">Show technical information</div>
-                                </div>
-                            </a>
-                            <a href="#" class="dropdown-item" onclick="exportData()">
-                                <span class="dropdown-icon">📊</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">Export Data</div>
-                                    <div class="dropdown-desc">Save student list and messages</div>
-                                </div>
-                            </a>
-                        </div>
-                    </li>
-
-                    <!-- Polls -->
-                    <li class="nav-item">
-                        <a href="#" class="nav-link">
-                            <span class="nav-icon">📊</span>
-                            <span>Polls</span>
-                        </a>
-                        <div class="dropdown">
-                            <a href="#" class="dropdown-item" onclick="window.teacherDashboard.openPollCreationModal()">
-                                <span class="dropdown-icon">➕</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">Start New Poll</div>
-                                    <div class="dropdown-desc">Send quick question to class</div>
-                                </div>
-                            </a>
-                        </div>
-                    </li>
-
-                    <!-- Reports -->
-                    <li class="nav-item">
-                        <a href="#" class="nav-link">
-                            <span class="nav-icon">📊</span>
-                            <span>Reports</span>
-                        </a>
-                        <div class="dropdown">
-                            <div class="dropdown-header">Reports and analytics (FFU)</div>
-                            <a href="#" class="dropdown-item" onclick="generateLessonSummary()">
-                                <span class="dropdown-icon">📋</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">Lesson Summary</div>  
-                                    <div class="dropdown-desc">Comprehensive AI report of entire lesson</div>
-                                </div>
-                            </a>
-                            <a href="#" class="dropdown-item" onclick="exportLessonData()">
-                                <span class="dropdown-icon">💾</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">Export Lesson Data</div>
-                                    <div class="dropdown-desc">Save all data to file</div>
-                                </div>
-                            </a>
-                        </div>
-                    </li>
-                </ul>
-            </nav>
-
-            <!-- Add this button right after the <nav> element -->
-            <button id="resetScreensBtn" title="Stop current activity and clear all student screens" style="background: #e74c3c; color: white; border: none; padding: 8px 16px; border-radius: 20px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 18px;">⏹️</span>
-                <span>Clear Screens</span>
-            </button>
-
-            <div class="status-indicator" id="connectionStatus">
-                <div class="status-dot"></div>
-                <span>Connecting...</span>
+                <img id="qr-code-image" class="qr-code" alt="QR Code" title="Click to copy student link"/>
             </div>
         </div>
-    </header>
+
+        <!-- Center: Navigation Menu -->
+        <nav class="header-center">
+            <ul class="nav-menu">
+                <!-- Quick Actions -->
+                <li class="nav-item">
+                    <a href="#" class="nav-link"><span class="nav-icon">⚡</span><span>Quick Actions</span></a>
+                    <div class="dropdown">
+                        <div class="dropdown-header">Quick actions for lesson management</div>
+                        <a href="#" class="dropdown-item success-item" onclick="sendQuickMessage('Let\'s start the lesson!')"><span class="dropdown-icon">🎓</span><div class="dropdown-content"><div class="dropdown-title">Start Lesson</div><div class="dropdown-desc">Send message to all students</div></div></a>
+                        <a href="#" class="dropdown-item warning-item" onclick="sendQuickMessage('Time for a break! Come back in 5 minutes.')"><span class="dropdown-icon">☕</span><div class="dropdown-content"><div class="dropdown-title">Break Time</div><div class="dropdown-desc">Announce break time</div></div></a>
+                        <a href="#" class="dropdown-item" onclick="sendQuickMessage('The lesson has ended. Well done everyone!')"><span class="dropdown-icon">✅</span><div class="dropdown-content"><div class="dropdown-title">End Lesson</div><div class="dropdown-desc">Finish the lesson</div></div></a>
+                        <a href="#" class="dropdown-item danger-item" onclick="resetClassroomData()"><span class="dropdown-icon">🔄</span><div class="dropdown-content"><div class="dropdown-title">New Lesson</div><div class="dropdown-desc">Clear all lesson data</div></div></a>
+                    </div>
+                </li>
+                <!-- Games and Content -->
+                <li class="nav-item">
+                    <a href="#" class="nav-link" onclick="window.teacherDashboard.openContentModal()"><span class="nav-icon">🎮</span><span>Games & Content</span></a>
+                </li>
+                <!-- AI Management -->
+                <li class="nav-item">
+                    <a href="#" class="nav-link" id="aiMenuLink"><span class="nav-icon">🤖</span><span>AI Management</span></a>
+                    <div class="dropdown">
+                        <div class="dropdown-header">AI Assistant settings for students</div>
+                        <a href="#" class="dropdown-item" id="toggleAI" onclick="console.log('🟢 TRACE: AI button clicked'); window.teacherDashboard.toggleAIForClass()"><span class="dropdown-icon" id="aiStatusIcon">🔴</span><div class="dropdown-content"><div class="dropdown-title" id="aiStatusText">AI disabled for students</div><div class="dropdown-desc">Click to enable</div></div></a>
+                        <div style="padding: 10px 20px; border-top: 1px solid #f0f2f5; background: #f8f9fa;"><strong style="font-size: 14px; color: #555;">🎯 Select model for class:</strong><div style="font-size: 12px; color: #777; margin-top: 2px;">Current model: <span class="current-ai-model">ChatGPT</span></div></div>
+                        <a href="#" class="dropdown-item ai-model-btn" data-model="chatgpt" onclick="window.teacherDashboard.switchAIModel('chatgpt')"><span class="dropdown-icon">🤖</span><div class="dropdown-content"><div class="dropdown-title">ChatGPT</div><div class="dropdown-desc">Advanced model from OpenAI</div></div></a>
+                        <a href="#" class="dropdown-item ai-model-btn" data-model="claude" onclick="window.teacherDashboard.switchAIModel('claude')"><span class="dropdown-icon">🧠</span><div class="dropdown-content"><div class="dropdown-title">Claude</div><div class="dropdown-desc">Smart model from Anthropic</div></div></a>
+                        <a href="#" class="dropdown-item ai-model-btn" data-model="gemini" onclick="window.teacherDashboard.switchAIModel('gemini')"><span class="dropdown-icon">✨</span><div class="dropdown-content"><div class="dropdown-title">Gemini</div><div class="dropdown-desc">Google's model</div></div></a>
+                    </div>
+                </li>
+                <!-- Tools -->
+                <li class="nav-item">
+                    <a href="#" class="nav-link"><span class="nav-icon">🔧</span><span>Tools</span></a>
+                    <div class="dropdown">
+                        <div class="dropdown-header">Utilities and debugging tools</div>
+                        <a href="#" class="dropdown-item" onclick="toggleDebug()"><span class="dropdown-icon">🐛</span><div class="dropdown-content"><div class="dropdown-title">Debug Console</div><div class="dropdown-desc">Show technical information</div></div></a>
+                        <a href="#" class="dropdown-item" onclick="exportData()"><span class="dropdown-icon">📊</span><div class="dropdown-content"><div class="dropdown-title">Export Data</div><div class="dropdown-desc">Save student list and messages</div></div></a>
+                        <a href="#" class="dropdown-item" id="open-content-manager-btn">
+                            <span class="dropdown-icon">📚</span>
+                            <div class="dropdown-content">
+                                <div class="dropdown-title">Manage Content & AI</div>
+                                <div class="dropdown-desc">Edit your personal links and AI prompts</div>
+                            </div>
+                        </a>
+                    </div>
+                </li>
+                <!-- Polls -->
+                <li class="nav-item">
+                    <a href="#" class="nav-link"><span class="nav-icon">📊</span><span>Polls</span></a>
+                    <div class="dropdown">
+                        <a href="#" class="dropdown-item" onclick="window.teacherDashboard.openPollCreationModal()"><span class="dropdown-icon">➕</span><div class="dropdown-content"><div class="dropdown-title">Start New Poll</div><div class="dropdown-desc">Send quick question to class</div></div></a>
+                    </div>
+                </li>
+                <!-- Reports -->
+                <li class="nav-item">
+                    <a href="#" class="nav-link"><span class="nav-icon">📊</span><span>Reports</span></a>
+                    <div class="dropdown">
+                        <div class="dropdown-header">Reports and analytics (FFU)</div>
+                        <a href="#" class="dropdown-item" onclick="generateLessonSummary()"><span class="dropdown-icon">📋</span><div class="dropdown-content"><div class="dropdown-title">Lesson Summary</div><div class="dropdown-desc">Comprehensive AI report of entire lesson</div></div></a>
+                        <a href="#" class="dropdown-item" onclick="exportLessonData()"><span class="dropdown-icon">💾</span><div class="dropdown-content"><div class="dropdown-title">Export Lesson Data</div><div class="dropdown-desc">Save all data to file</div></div></a>
+                    </div>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Right Side: Actions & Status -->
+        <div class="header-right">
+            <!-- New End Lesson Button with Dropdown -->
+            <div class="dropdown-action-btn" id="end-lesson-controls">
+                <button class="main-action-icon">✖</button>
+                <div class="dropdown">
+                    <a href="#" class="dropdown-item" id="reset-screens-action">
+                        <span class="dropdown-icon">⏹️</span>
+                        <div class="dropdown-content">
+                            <div class="dropdown-title">Clear Screens</div>
+                            <div class="dropdown-desc">Reset all student screens</div>
+                        </div>
+                    </a>
+                    <a href="#" class="dropdown-item danger-item" id="end-lesson-action" onclick="document.getElementById('end-lesson-modal').classList.add('visible')">
+                        <span class="dropdown-icon">🚫</span>
+                        <div class="dropdown-content">
+                            <div class="dropdown-title">Exit Lesson</div>
+                            <div class="dropdown-desc">End lesson and show report options</div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- New Logout Button -->
+            <button id="logout-action-btn" class="main-action-icon green" title="Logout">🚪</button>
+
+            <!-- New Connection Status Indicator -->
+            <div id="connectionStatus" title="Connecting..."></div>
+        </div>
+    </div>
+</header>
+<!-- ===================== NEW HEADER END ===================== -->
 
     <!-- Main Content -->
-    <div class="main-content">
+    <div class="main-content" style="display: none;">
         <!-- Students Section -->
         <div class="section">
             <h2>👥 Connected Students (<span id="studentsCount">0</span>)</h2>
@@ -398,6 +342,94 @@
     <script src="js/ClassroomSDK.js"></script>
     <script src="js/teacher-dashboard.js"></script>
 
+    <!-- =========================================================== -->
+    <!-- ========= CONTENT & AI PROMPT MANAGEMENT MODAL V2 ========= -->
+    <!-- =========================================================== -->
+    <div id="content-manager-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 1000px; height: 80vh;">
+            <div class="modal-header">
+                <h3>📚 Manage Your Content & AI Contexts</h3>
+                <button class="modal-close">×</button>
+            </div>
+            <div class="modal-body" style="padding: 0; display: flex; flex-direction: column; height: calc(100% - 70px);">
+                <!-- Tabs Navigation -->
+                <div class="tabs">
+                    <button class="tab-link active" data-tab="tab-my-content">My Content</button>
+                    <button class="tab-link" data-tab="tab-my-prompts">My AI Prompts</button>
+                </div>
+
+                <!-- Tab 1: My Content (Links) -->
+                <div id="tab-my-content" class="tab-content active two-column-grid">
+                    <div class="column-left scrollable">
+                        <h4>My Content Library</h4>
+                        <div class="content-list" id="personal-content-list">
+                            <!-- Personal links will be dynamically inserted here -->
+                        </div>
+                    </div>
+                    <div class="column-right">
+                        <h4>Add / Edit Content</h4>
+                        <form id="personal-content-form">
+                            <input type="text" id="content-title" placeholder="Title (e.g., 'PhET Simulation')" required>
+                            <input type="text" id="content-desc" placeholder="Description" required>
+                            <input type="text" id="content-icon" placeholder="Icon (e.g., '🎯')" required>
+                            <input type="url" id="content-url" placeholder="https://..." required>
+                            <input type="hidden" id="content-id">
+                            <button type="submit">Save Content</button>
+                            <button type="button" id="cancel-content-edit" class="secondary" style="display:none;">Cancel Edit</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Tab 2: My AI Prompts -->
+                <div id="tab-my-prompts" class="tab-content two-column-grid">
+                    <div class="column-left scrollable">
+                        <h4>My Prompt Library</h4>
+                        <div class="active-prompt-selector-container">
+                            <label for="active-prompt-selector">Active AI Context for Class:</label>
+                            <select id="active-prompt-selector">
+                                <option value="general">General (Open Context)</option>
+                            </select>
+                        </div>
+                        <div class="content-list" id="personal-prompts-list">
+                            <!-- Personal prompts will be dynamically inserted here -->
+                        </div>
+                    </div>
+                    <div class="column-right">
+                        <h4>Prompt Creation Wizard</h4>
+                        <div class="prompt-wizard">
+                            <form id="personal-prompt-form">
+                                <p>1. Select a main subject:</p>
+                                <select id="prompt-subject-selector" required>
+                                    <option value="" disabled selected>Choose a subject...</option>
+                                    <option value="General">General</option>
+                                    <option value="Math">Math</option>
+                                    <option value="Physics">Physics</option>
+                                    <option value="Biology">Biology</option>
+                                    <option value="History">History</option>
+                                    <option value="Literature">Literature</option>
+                                    <option value="Computer Science">Computer Science</option>
+                                </select>
+
+                                <p>2. Add specific keywords (optional):</p>
+                                <input type="text" id="prompt-keywords-input" placeholder="e.g., Pythagorean theorem, triangles">
+
+                                <button type="button" id="generate-prompt-suggestion-btn">Create a Prompt for Me</button>
+
+                                <hr>
+
+                                <p>3. Refine the suggested prompt and save it:</p>
+                                <input type="text" id="prompt-title" placeholder="Prompt Title (e.g., 'Pythagorean Theorem')" required>
+                                <textarea id="prompt-content" rows="5" required></textarea>
+                                <input type="hidden" id="prompt-id">
+                                <button type="submit">Save Prompt</button>
+                                <button type="button" id="cancel-prompt-edit" class="secondary" style="display:none;">Cancel Edit</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <script>
         console.log('🟢 TRACE: index.html loaded');
         
@@ -410,14 +442,22 @@
         console.log('🔍 Firebase initialized');
         console.log('🔍 ClassroomSDK available:', typeof ClassroomSDK);
         
-        window.addEventListener('load', () => {
-            console.log('🟢 TRACE: Window loaded, initializing teacher dashboard');
-            window.teacherDashboard = new TeacherDashboard();
-            window.teacherDashboard.init().then(() => {
-                console.log('✅ Teacher dashboard fully initialized');
-            }).catch(error => {
-                console.error('❌ Teacher dashboard initialization failed:', error);
-            });
+        window.teacherDashboard = new TeacherDashboard();
+        firebase.auth().onAuthStateChanged(user => {
+            if (user) {
+                // User is signed in.
+                console.log('✅ User is signed in:', user.uid);
+                document.getElementById('loading-overlay').classList.remove('hidden'); // Show loading
+                window.teacherDashboard.handleSuccessfulLogin(user)
+                    .catch(err => {
+                        console.error("Login handling failed", err);
+                        window.teacherDashboard.logout(); // Logout on error
+                    });
+            } else {
+                // User is signed out.
+                console.log('🚪 User is signed out.');
+                window.teacherDashboard.showLoginScreen();
+            }
         });
         
         // פונקציות גלובליות

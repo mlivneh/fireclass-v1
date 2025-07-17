@@ -1,8 +1,8 @@
 # fireClass Control - Digital Classroom Management System
 ## Architecture Documentation Based on Existing Codebase
 
-**Version:** 3.2 (Code-Aligned Documentation)  
-**Last Updated:** July 06, 2025
+**Version:** 4.1 (Authentication Upgrade & Race Condition Fix)  
+**Last Updated:** July 17, 2025
 
 ---
 
@@ -13,6 +13,12 @@ Teachers invest significant time creating high-quality presentations in PowerPoi
 **fireClass Control transforms existing presentations from monologues into interactive dialogues.**
 
 It is a real-time digital classroom management system that "wraps" any web-based content—whether it's an external simulation from **PhET**, a tool like **Google's Teachable Machine**, or a custom-built application—with a layer of classroom infrastructure. With a single button click from within their existing PowerPoint slide, a teacher can launch the fireClass Dashboard, turning any slide into a live, interactive, and measurable learning experience without changing their original materials.
+
+### Recent Architectural Evolution (v4.1)
+
+The system has evolved from a centralized configuration model to a teacher-centric personalization platform. Each teacher now manages their own library of content and custom-tailors the AI's behavior to fit their specific pedagogical goals for each lesson, granting unprecedented flexibility and control.
+
+**Critical v4.1 Update**: The authentication system has been completely overhauled to replace anonymous authentication with identified provider-based authentication (Google/Microsoft), implementing a Gatekeeper pattern that resolves Race Condition issues in the login process.
 
 ---
 
@@ -37,13 +43,18 @@ flowchart TD
     subgraph "Firebase Backend (europe-west1)"
         Firestore[(Firestore Database)]
         Functions[Cloud Functions]
-        Auth[Anonymous Authentication<br/>(Teacher Only)]
+        Auth[Provider Authentication<br/>(Google/Microsoft)]
         Hosting[Static Hosting]
     end
 
-    subgraph "Configuration"
-        Config["config.json<br/>(Game URLs & Settings)"]
-        CSS["CSS Files<br/>(Styling)"]
+    subgraph "Authentication Layer (v4.1)"
+        Gatekeeper["Gatekeeper Pattern<br/>(HTML Level)"]
+        AuthState["onAuthStateChanged<br/>(Single Source of Truth)"]
+    end
+
+    subgraph "Data Models"
+        TeacherData["/teachers/{uid}<br/>(Authenticated Profile)"]
+        RoomData["/rooms/{roomCode}<br/>(Ephemeral Class Data)"]
     end
 
     Teacher --> TeacherJS
@@ -55,9 +66,14 @@ flowchart TD
     SDK --> Functions
     SDK --> Auth
     
+    Auth --> Gatekeeper
+    Gatekeeper --> AuthState
+    
+    Firestore --> TeacherData
+    Firestore --> RoomData
+    
     Hosting --> Teacher
     Hosting --> Student
-    Hosting --> Config
     
     PPT -.-> Teacher
 ```
@@ -69,12 +85,98 @@ flowchart TD
 - **Initialization** - `init()` handles teacher vs student differentiation
 - **Real-time Communication** - Firestore snapshot listeners
 - **UI Interfaces** - Creates floating chat and AI interfaces
+- **Authentication** - Google/Microsoft OAuth integration (v4.1)
 
-#### b) User Authentication (Updated in v3.2)
+#### b) User Authentication (Major Update in v4.1)
+
+**Critical Race Condition Fix**: The authentication system suffered from a Race Condition where the application would check authentication status before Firebase had processed redirect results, causing infinite login loops.
+
+**Solution - Gatekeeper Pattern**: Complete separation of authentication logic from application logic.
+
 ```javascript
-// Teacher: Anonymous login with Firebase Authentication
-await this.auth.signInAnonymously();
+// HTML-Level Gatekeeper (index.html)
+auth.onAuthStateChanged(async (user) => {
+    if (user) {
+        // User authenticated - show dashboard and initialize app
+        if (!window.teacherDashboard) {
+            window.teacherDashboard = new TeacherDashboard();
+            await window.teacherDashboard.init(user); 
+        }
+    } else {
+        // User not authenticated - show login interface
+        await auth.getRedirectResult();
+        showLoginInterface();
+    }
+});
+```
 
+**Teacher Authentication - Complete Overhaul**:
+```javascript
+// Google/Microsoft OAuth Implementation
+async loginWithGoogle() {
+    try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        const result = await this.auth.signInWithPopup(provider);
+        return result.user;
+    } catch (error) {
+        console.error('🔥 Google login failed:', error);
+        throw error;
+    }
+}
+
+// Teacher Profile Creation (v4.1)
+async createTeacherProfile(user) {
+    const teacherRef = this.db.collection('teachers').doc(user.uid);
+    const teacherDoc = await teacherRef.get();
+    
+    if (!teacherDoc.exists) {
+        // Create new teacher profile
+        await teacherRef.set({
+            profile: {
+                name: user.displayName || 'Unknown Teacher',
+                email: user.email,
+                photoURL: user.photoURL || null,
+                created_at: firebase.firestore.FieldValue.serverTimestamp(),
+                last_login: firebase.firestore.FieldValue.serverTimestamp()
+            },
+            config: {
+                apps: [
+                    {
+                        name: "AI Model Training",
+                        description: "Visual Recognition training",
+                        icon: "📚",
+                        url: "https://meir.world/face-recognition/"
+                    },
+                    {
+                        name: "Teachable Machine",
+                        description: "Google Teachable Machines",
+                        icon: "🎯",
+                        url: "https://teachablemachine.withgoogle.com/train"
+                    },
+                    {
+                        name: "PhET",
+                        description: "Projectile Data Lab",
+                        icon: "🎯",
+                        url: "https://phet.colorado.edu/sims/html/projectile-data-lab/latest/projectile-data-lab_all.html"
+                    }
+                ],
+                settings: {
+                    default_ai_model: 'gemini',
+                    auto_enable_ai: true
+                }
+            }
+        });
+    } else {
+        // Update existing teacher
+        await teacherRef.update({
+            'profile.last_login': firebase.firestore.FieldValue.serverTimestamp()
+        });
+    }
+}
+```
+
+**Student Authentication - Unchanged**:
+```javascript
 // Student: Session-based ID generation (no Firebase Auth)
 getOrCreateStudentId() {
     let studentId = sessionStorage.getItem('studentId');
@@ -86,7 +188,7 @@ getOrCreateStudentId() {
 }
 ```
 
-**Teacher**: Uses Firebase Anonymous Authentication to obtain a stable, unique UID for creating and managing the classroom.
+**Teacher**: Uses Firebase Provider Authentication (Google/Microsoft) to obtain a stable, unique UID for creating and managing the classroom.
 
 **Student**: **NO Firebase Authentication.** Upon joining, the student app generates a temporary, unique session ID (studentId) stored in sessionStorage. This ID is unique per browser tab and allows for multiple students to be simulated from a single device for testing purposes.
 
@@ -114,15 +216,21 @@ this.classroom.listenForRoomUpdates(this.stateManager.bind(this));  // For AI/po
 this.classroom.listenForMessages(this.messageHandler.bind(this));   // For actual messages
 ```
 
-#### c) Room Management
+#### c) Room Management (Updated for v4.1)
+
 ```javascript
 // Room structure in Firestore
 /rooms/{4-digit-code}/
+├── room_code: string
+├── created_at: timestamp
+├── teacher_uid: string               // NOW: Authenticated Teacher UID
+├── lesson_orientation: string
 ├── settings/
 │   ├── ai_active: boolean
 │   ├── ai_model: string
-│   └── current_command: object
-│   └── currentPoll: {          // Enhanced polling structure
+│   ├── active_prompt_id: string      // Personal AI prompt reference
+│   ├── current_command: object
+│   └── currentPoll: {
 │       ├── id: string
 │       ├── type: string
 │       ├── question: string
@@ -148,17 +256,21 @@ This example demonstrates how the platform transforms a standard lesson into an 
 #### **The "Before" Scenario (Without fireClass):**
 The teacher shows a slide and asks, "How do you think a computer knows this is Homer?" The discussion is verbal, and engagement is hard to track.
 
-#### **The "After" Scenario (With fireClass):**
-1.  **Launch from PowerPoint:** The teacher reaches the relevant slide and clicks a pre-set button. The fireClass Dashboard opens seamlessly.
-2.  **Send Interactive Content:** From the dashboard, the teacher selects the "AI Model Training" app (defined in `config.json`) and sends it to all students.
-3.  **Active, Measurable Learning:**
+#### **The "After" Scenario (With fireClass v4.1):**
+1. **Secure Authentication:** Teacher signs in with Google/Microsoft account
+2. **Personal Profile Loading:** System recognizes returning teacher and loads their personalized dashboard
+3. **Room Creation:** System creates room associated with teacher's authenticated UID
+4. **Personal Content Selection:** From the dashboard, the teacher selects "AI Model Training" from their personal content library
+5. **AI Context Application:** Teacher applies a custom "Face Recognition Learning" AI prompt to focus student interactions
+6. **Active, Measurable Learning:**
     * **Training Phase:** Students are prompted to measure key geometric ratios on a base image of Homer.
     * **Testing Phase:** They test their "trained" model on other images of Homer with different expressions and angles.
     * **Analysis:** A results table shows them a similarity score for each test image, demonstrating why the AI succeeds or fails.
-4.  **Real-time Teacher Insights:** The teacher's dashboard shows each student's results and allows for private chat.
-5.  **Data-Driven Discussion:** The teacher pauses the activity and says, "I see many of you found the AI failed when Homer was surprised. Let's discuss why a change in expression breaks a measurement-based model."
+7. **Real-time Teacher Insights:** The teacher's dashboard shows each student's results and allows for private chat with contextual AI assistance.
+8. **Data-Driven Discussion:** The teacher pauses the activity and says, "I see many of you found the AI failed when Homer was surprised. Let's discuss why a change in expression breaks a measurement-based model."
+9. **Persistent Analytics:** All lesson data is saved to the teacher's authenticated profile for future analysis and improvement.
 
-The platform didn't just show a game; it created a hands-on lab for understanding AI, all launched from the teacher's original presentation.
+The platform didn't just show a game; it created a hands-on lab for understanding AI, all launched from the teacher's original presentation with full authentication security and personalized content management.
 
 ---
 
@@ -187,22 +299,22 @@ The teacher's dashboard maintains a local, in-memory copy of the current poll's 
 ### 5.1 Directory Structure
 ```
 public/
-├── index.html                 # Teacher Dashboard
+├── index.html                 # Teacher Dashboard with Gatekeeper
 ├── student-app.html           # Student Interface  
 ├── firebase-config.js         # Firebase Configuration
-├── config.json               # Games & URLs Configuration
+├── config.json               # Legacy Configuration (deprecated v4.1)
 ├── css/
 │   ├── teacher-dashboard.css  # Teacher Styling (English LTR)
 │   └── student-app.css       # Student Styling (English LTR)
 └── js/
-    ├── ClassroomSDK.js       # Core SDK
-    ├── teacher-dashboard.js  # Teacher Logic
+    ├── ClassroomSDK.js       # Core SDK with OAuth
+    ├── teacher-dashboard.js  # Teacher Logic (Simplified Init)
     └── student-app.js        # Student Logic
 ```
 
 ### 5.2 ClassroomSDK.js - Core Functionality
 
-#### Room Creation (Teacher)
+#### Room Creation (Teacher) - Updated for v4.1
 ```javascript
 async generateUniqueRoomCode() {
     // 20 attempts to find unique 4-digit code
@@ -219,10 +331,30 @@ async generateUniqueRoomCode() {
         }
         attempts++;
     }
+    
+    // Fallback to random code
+    return Math.floor(1000 + Math.random() * 9000).toString();
+}
+
+// Initialize room with authenticated teacher UID
+async initializeRoom(teacherUid) {
+    const roomRef = this.db.collection('rooms').doc(this.roomCode);
+    await roomRef.set({
+        room_code: this.roomCode,
+        created_at: firebase.firestore.FieldValue.serverTimestamp(),
+        teacher_uid: teacherUid,  // Authenticated teacher UID
+        lesson_orientation: 'general',
+        settings: {
+            ai_active: true,
+            ai_model: 'gemini',
+            current_command: null,
+            currentPoll: { isActive: false }
+        }
+    });
 }
 ```
 
-#### Room Joining (Student)
+#### Room Joining (Student) - Unchanged
 ```javascript
 async joinRoom(studentId, playerName) {
     const studentRef = this.db.collection('rooms').doc(this.roomCode)
@@ -334,11 +466,40 @@ stateManager: function(roomData) {
 
 ### 6.1 Teacher Dashboard (index.html + teacher-dashboard.js)
 
+#### Authentication Interface (New v4.1)
+```html
+<!-- Teacher Login Screen -->
+<div id="teacher-login-container" class="login-container" style="display: none;">
+    <div class="login-card">
+        <div class="login-header">
+            <h1>🎓 Teacher Login</h1>
+            <p>Please sign in to access your classroom dashboard</p>
+        </div>
+        
+        <div class="login-buttons">
+            <button id="google-login-btn" class="login-btn google-btn" onclick="startGoogleLogin()">
+                <span class="login-icon">🔍</span>
+                <span>Sign in with Google</span>
+            </button>
+            
+            <button id="microsoft-login-btn" class="login-btn microsoft-btn" onclick="startMicrosoftLogin()">
+                <span class="login-icon">🏢</span>
+                <span>Sign in with Microsoft</span>
+            </button>
+        </div>
+        
+        <div class="login-footer">
+            <p>Secure authentication • Your data stays private</p>
+        </div>
+    </div>
+</div>
+```
+
 #### Top Navigation Menu
 - **Quick Actions** - Pre-made messages for class, including "End Lesson" workflow
-- **Games & Content** - Load URLs from config.json
+- **Games & Content** - Load URLs from personal content library (updated v4.1)
 - **AI Management** - Enable/disable + model selection (ChatGPT/Claude/Gemini)
-- **Tools** - Debug console and data export
+- **Tools** - Debug console, data export, and **Manage Content & AI** (new v4.1)
 - **Polls** - Create quick polls for class
 - **Reports** - Advanced reporting and analytics
 
@@ -581,92 +742,123 @@ displayPollResults(pollData) {
 
 ---
 
-## 8. Configuration System (config.json)
+## 8. Configuration System (Personal Content Libraries - v4.1)
 
-### 8.1 Configuration File Structure
-```json
-{
-  "studentAppUrl": "https://class-board-ad64e.web.app/student-app.html",
-  "games": [
-    {
-      "name": "AI Model Training",
-      "description": "Visual Recognition training",
-      "icon": "📚",
-      "url": "https://meir.world/face-recognition/"
-    },
-    {
-      "name": "TM",
-      "description": "Goggle Teachable Machines",
-      "icon": "🎯",
-      "url": "https://teachablemachine.withgoogle.com/train"
-    },
-    {
-      "name": "PhET",
-      "description": "Projectile Data Lab",
-      "icon": "🎯",
-      "url": "https://phet.colorado.edu/sims/html/projectile-data-lab/latest/projectile-data-lab_all.html"
-    }
-  ]
-}
+### 8.1 Evolution from Global to Personal Configuration
+
+**v3.2 and Earlier**: Single global `config.json` file with predefined content for all teachers.
+
+**v4.1**: Personal content libraries stored in Firestore per authenticated teacher.
+
+### 8.2 Personal Content Management
+
+```javascript
+// Teacher's personal content structure in Firestore
+/teachers/{teacherUid}/
+├── profile: { name, email, photoURL, created_at, last_login }
+├── config: { apps: [], settings: {} }
+├── /personal_links/{linkId}/
+│   ├── title: string
+│   ├── description: string
+│   ├── icon: string
+│   └── url: string
+└── /personal_prompts/{promptId}/
+    ├── title: string
+    └── prompt: string
 ```
 
-### 8.2 Configuration Loading and Usage
+### 8.3 Content Management Interface
+
 ```javascript
-// Teacher dashboard loads config
-async loadConfigData() {
-    try {
-        const response = await fetch('config.json');
-        if (!response.ok) throw new Error('Network response was not ok');
-        this.config = await response.json();
-        this.debugLog('✅ Config file loaded successfully', this.config);
-    } catch (error) {
-        console.error('🔥 Error loading config file:', error);
-        this.config = { studentAppUrl: 'student-app.html', games: [] };
-    }
+// Teacher manages personal content library
+async managePersonalContent() {
+    // Load teacher's personal links
+    const linksSnapshot = await this.sdk.db.collection('teachers')
+        .doc(this.auth.currentUser.uid)
+        .collection('personal_links')
+        .get();
+    
+    const personalLinks = [];
+    linksSnapshot.forEach(doc => {
+        personalLinks.push({ id: doc.id, ...doc.data() });
+    });
+    
+    // Populate content management interface
+    this.populatePersonalContentList(personalLinks);
 }
 
-// Populate games list from config
+// Dynamic content loading in Games & Content menu
 populateGamesList() {
     const container = document.getElementById('game-list-container');
-    const games = this.config?.games || [];
     
-    container.innerHTML = '';
-    
-    games.forEach(game => {
-        const gameElement = document.createElement('a');
-        gameElement.href = '#';
-        gameElement.className = 'dropdown-item';
-        gameElement.onclick = (e) => {
-            e.preventDefault();
-            this.sendSelectedGame(game.url);
-        };
+    // Load from teacher's personal library instead of config.json
+    this.loadPersonalLinks().then(links => {
+        container.innerHTML = '';
+        
+        links.forEach(link => {
+            const linkElement = document.createElement('a');
+            linkElement.href = '#';
+            linkElement.className = 'dropdown-item';
+            linkElement.onclick = (e) => {
+                e.preventDefault();
+                this.sendSelectedGame(link.url);
+            };
 
-        gameElement.innerHTML = `
-            <span class="dropdown-icon">${game.icon || '🔗'}</span>
-            <div class="dropdown-content">
-                <div class="dropdown-title">${game.name}</div>
-                <div class="dropdown-desc">${game.description}</div>
-            </div>
-        `;
-        container.appendChild(gameElement);
+            linkElement.innerHTML = `
+                <span class="dropdown-icon">${link.icon || '🔗'}</span>
+                <div class="dropdown-content">
+                    <div class="dropdown-title">${link.title}</div>
+                    <div class="dropdown-desc">${link.description}</div>
+                </div>
+            `;
+            container.appendChild(linkElement);
+        });
     });
 }
 ```
 
 ---
 
-## 9. Database Structure (Firestore) - Code-Aligned
+## 9. Database Structure (Firestore) - v4.1
 
 ### 9.1 Complete Schema
-```
-/rooms/{4-digit-code}
+
+```javascript
+// Persistent teacher data (NEW v4.1)
+/teachers/{teacherUid}/
+├── profile: {
+│   ├── name: string
+│   ├── email: string
+│   ├── photoURL: string
+│   ├── created_at: timestamp
+│   └── last_login: timestamp
+│   }
+├── config: {
+│   ├── apps: array (default content from createTeacherProfile)
+│   └── settings: {
+│       ├── default_ai_model: string
+│       └── auto_enable_ai: boolean
+│       }
+│   }
+├── /personal_links/{linkId}/
+│   ├── title: string
+│   ├── description: string
+│   ├── icon: string
+│   └── url: string
+└── /personal_prompts/{promptId}/
+    ├── title: string
+    └── prompt: string
+
+// Ephemeral classroom sessions (UPDATED v4.1)
+/rooms/{roomCode}/
 ├── room_code: string
 ├── created_at: timestamp
-├── last_activity: timestamp
-├── teacher_uid: string (from Firebase Anonymous Auth)
+├── teacher_uid: string (authenticated teacher UID)
+├── lesson_orientation: string
 ├── settings: {
 │   ├── ai_active: boolean
-│   ├── ai_model: string ('chatgpt'|'claude'|'gemini')
+│   ├── ai_model: string ('gemini'|'chatgpt'|'claude')
+│   ├── active_prompt_id: string (links to teacher's personal prompt)
 │   ├── current_command: {
 │   │   ├── command: string
 │   │   ├── payload: object
@@ -709,43 +901,67 @@ populateGamesList() {
 
 ---
 
-## 9. Security and Privacy Model
+## 10. Security and Privacy Model (Updated v4.1)
 
-### 9.1 Authentication Architecture
-**Teacher**: Uses Firebase Anonymous Authentication to get a stable UID for room management and administrative operations.
+### 10.1 Authentication Architecture
+
+**Teacher**: Uses Firebase Provider Authentication (Google/Microsoft) to get a stable UID for room management and administrative operations.
 
 **Student**: **No Firebase Authentication whatsoever.** Uses browser sessionStorage-based unique IDs that persist only for the session.
 
-### 9.2 Firestore Security Rules (Updated)
+### 10.2 Firestore Security Rules (Updated v4.1)
+
 ```javascript
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Rooms can be read by anyone with the room code
-    match /rooms/{roomId} {
-      allow read: if true;
-      allow write: if request.auth != null; // Only authenticated teachers
+    
+    // Teachers Collection - Personal data protection
+    match /teachers/{teacherId} {
+      // A teacher can read and write ONLY to their own document and subcollections
+      allow read, write: if request.auth != null && request.auth.uid == teacherId;
+
+      match /personal_links/{linkId} {
+        allow read, write: if request.auth != null && request.auth.uid == teacherId;
+      }
       
-      // Students collection - anyone can join (unauthenticated writes allowed)
+      match /personal_prompts/{promptId} {
+        allow read, write: if request.auth != null && request.auth.uid == teacherId;
+      }
+    }
+
+    // Global Rooms Collection - Class interaction
+    match /rooms/{roomCode} {
+      allow create: if request.auth != null; // Any authenticated teacher can create
+      allow read: if true; // Anyone can read room data to join
+      // Only the teacher who created the room can update or delete it
+      allow update, delete: if request.auth != null && 
+        request.auth.uid == resource.data.teacher_uid;
+      
+      // Subcollections are open for real-time class interaction
       match /students/{studentId} {
-        allow read, write: if true; // Open for session-based students
+        allow create, read: if true;
+        allow delete: if request.auth != null && 
+          request.auth.uid == get(/databases/$(database)/documents/rooms/$(roomCode)).data.teacher_uid;
       }
       
-      // Messages collection - anyone can send messages
       match /messages/{messageId} {
-        allow read, write: if true; // Open for session-based students
+        allow create, read: if true;
+        allow delete: if request.auth != null && 
+          request.auth.uid == get(/databases/$(database)/documents/rooms/$(roomCode)).data.teacher_uid;
       }
       
-      // Question history - teacher only
       match /questionHistory/{questionId} {
-        allow read, write: if request.auth != null;
+        allow read, write: if request.auth != null && 
+          request.auth.uid == get(/databases/$(database)/documents/rooms/$(roomCode)).data.teacher_uid;
       }
     }
   }
 }
 ```
 
-### 9.3 Privacy Protection
+### 10.3 Privacy Protection
+
 ```javascript
 // Private message filtering (client-side)
 listenForMessages(callback) {
@@ -775,18 +991,22 @@ listenForMessages(callback) {
 
 ---
 
-## 10. Typical Workflow
+## 11. Typical Workflow (Updated v4.1)
 
-### 10.1 Class Setup
-1. **Teacher** opens `index.html`, system auto-generates 4-digit room code
-2. **Teacher** shares code with students (QR code displayed in header)
-3. **Students** navigate to `student-app.html?classroom={code}` (auto-populates room code)
-4. **Students** enter name, system generates session-based `studentId`
-5. **Real-time connection** established, teacher sees students appear
+### 11.1 Class Setup
 
-### 10.2 Content Delivery
+1. **Teacher Authentication** - Teacher opens `index.html`, Gatekeeper prompts for Google/Microsoft login
+2. **Profile Loading** - System loads or creates teacher profile with personal settings
+3. **Room Creation** - System auto-generates 4-digit room code associated with teacher UID
+4. **Student Access** - Teacher shares code with students (QR code displayed in header)
+5. **Student Joining** - Students navigate to `student-app.html?classroom={code}` (auto-populates room code)
+6. **Session Creation** - Students enter name, system generates session-based `studentId`
+7. **Real-time Connection** - Connection established, teacher sees students appear
+
+### 11.2 Content Delivery (Updated v4.1)
+
 ```javascript
-// Teacher selects content from config.json
+// Teacher selects content from personal library
 sendSelectedGame(url) {
     this.sendCommand('LOAD_CONTENT', { url });
     // Closes modal automatically
@@ -803,7 +1023,51 @@ stateManager: function(roomData) {
 }
 ```
 
-### 10.3 Real-time Polling Workflow
+### 11.3 AI Context Management (New v4.1)
+
+```javascript
+// Teacher applies personal AI prompt to classroom
+async setClassroomAIContext(promptId) {
+    const roomRef = this.sdk.db.collection('rooms').doc(this.sdk.getRoomCode());
+    await roomRef.update({
+        'settings.active_prompt_id': promptId,
+        'last_activity': firebase.firestore.FieldValue.serverTimestamp()
+    });
+    
+    this.addActivity(`🤖 AI context updated: ${promptTitle}`);
+}
+
+// Cloud Function applies context to student AI requests
+exports.askAI = functions.https.onCall(async (data, context) => {
+    const { prompt, roomCode, language } = data;
+    
+    // Get room data to check for active prompt
+    const roomDoc = await admin.firestore().collection('rooms').doc(roomCode).get();
+    const roomData = roomDoc.data();
+    
+    let contextualPrompt = prompt;
+    
+    // Apply teacher's selected context if available
+    if (roomData.settings?.active_prompt_id) {
+        const promptDoc = await admin.firestore()
+            .collection('teachers').doc(roomData.teacher_uid)
+            .collection('personal_prompts').doc(roomData.settings.active_prompt_id)
+            .get();
+        
+        if (promptDoc.exists) {
+            const systemPrompt = promptDoc.data().prompt;
+            contextualPrompt = `${systemPrompt}\n\nStudent question: ${prompt}`;
+        }
+    }
+    
+    // Send to AI service with context
+    const aiResponse = await callAIService(contextualPrompt, language);
+    return { result: aiResponse, model: 'gemini' };
+});
+```
+
+### 11.4 Real-time Polling Workflow
+
 1. **Teacher** creates poll through dashboard menu
 2. **System** assigns unique poll ID and sets `isActive: true`
 3. **Students** automatically see poll interface via `stateManager`
@@ -811,7 +1075,7 @@ stateManager: function(roomData) {
 5. **Teacher** sees real-time results and can request AI analysis
 6. **Teacher** stops poll when ready, system saves to question history
 
-### 10.4 Enhanced Communication Flow
+### 11.5 Enhanced Communication Flow
 
 #### Real-time Message Architecture
 The system uses a dual-stream approach for optimal performance:
@@ -858,9 +1122,10 @@ This architecture ensures **complete separation** between system commands and hu
 
 ---
 
-## 11. Advanced Features
+## 12. Advanced Features
 
-### 11.1 AI Analysis System
+### 12.1 AI Analysis System
+
 ```javascript
 // Teacher requests AI analysis of current poll responses
 async handleAiAnalysis(type) {
@@ -893,7 +1158,8 @@ async handleAiAnalysis(type) {
 }
 ```
 
-### 11.2 End-of-Lesson Reporting
+### 12.2 End-of-Lesson Reporting
+
 ```javascript
 // Generate comprehensive lesson summary
 async generateLessonSummary() {
@@ -946,7 +1212,8 @@ buildLessonSummaryPrompt(lessonData) {
 }
 ```
 
-### 11.3 Private Messaging System
+### 12.3 Private Messaging System
+
 ```javascript
 // Teacher sends private message to specific student
 async sendPrivateMessage() {
@@ -981,7 +1248,8 @@ async sendPrivateMessage(content, recipientUid) {
 }
 ```
 
-### 11.4 Floating UI Components (Student)
+### 12.4 Floating UI Components (Student)
+
 ```javascript
 // Create draggable chat interface for students
 createChatInterface() {
@@ -1039,9 +1307,10 @@ makeDraggable(element, dragHandle = null) {
 
 ---
 
-## 12. Code Quality and Error Handling
+## 13. Code Quality and Error Handling
 
-### 12.1 Message Deduplication
+### 13.1 Message Deduplication
+
 ```javascript
 // Prevent duplicate message display
 addSingleMessage(message) {
@@ -1060,7 +1329,8 @@ addSingleMessage(message) {
 }
 ```
 
-### 12.2 Room Validation
+### 13.2 Room Validation
+
 ```javascript
 // Validate room exists before joining (Student)
 async checkRoomExists(roomCode) {
@@ -1095,9 +1365,10 @@ handleLogin: async function(event) {
 }
 ```
 
-### 12.3 Configuration Fallbacks
+### 13.3 Configuration Fallbacks
+
 ```javascript
-// Robust config loading with fallbacks
+// Robust config loading with fallbacks (Legacy support)
 async loadConfigData() {
     try {
         const response = await fetch('config.json');
@@ -1115,32 +1386,72 @@ async loadConfigData() {
 }
 ```
 
+### 13.4 Authentication State Management (v4.1)
+
+```javascript
+// Simplified teacher dashboard initialization
+async init(user) {
+    if (!user) {
+        console.error("❌ CRITICAL: TeacherDashboard.init called without a user.");
+        return;
+    }
+    
+    console.log(`🚀 Initializing dashboard for confirmed user: ${user.uid}`);
+    
+    try {
+        // Core initialization with authenticated user
+        this.sdk = new ClassroomSDK();
+        await this.loadConfigData();
+        await this.sdk.createTeacherProfile(user);
+        await this.sdk.init('teacher-dashboard', user);
+        
+        // Setup UI and listeners
+        this.setupEventListeners();
+        this.sdk.createAIInterface();
+        this.initializeTeacherAI();
+        
+        // Real-time listeners
+        this.sdk.listenForStudents(this.updateStudentsList.bind(this));
+        this.sdk.listenForMessages(this.addMessage.bind(this));
+        this.sdk.listenForRoomUpdates(this.handleRoomUpdates.bind(this));
+        
+        this.updateConnectionStatus(true);
+        this.updateRoomDisplay();
+        
+    } catch (error) {
+        console.error("🔥 Critical initialization error:", error);
+        this.updateConnectionStatus(false);
+    }
+}
+```
+
 ---
 
-## 13. Technologies and Dependencies
+## 14. Technologies and Dependencies
 
-### 13.1 Frontend Stack
+### 14.1 Frontend Stack
 - **HTML5 + CSS3** - Responsive interface with LTR English layout
 - **Vanilla JavaScript ES6+** - No external frameworks, modern JS features
 - **Firebase SDK v9 (compat)** - Real-time database and authentication
 - **CSS Grid + Flexbox** - Advanced responsive layouts
 
-### 13.2 Backend Services
+### 14.2 Backend Services
 - **Firebase Firestore** - Real-time NoSQL database with offline support
 - **Firebase Cloud Functions** - AI services (`askAI`, `askChatGPT`) in europe-west1
-- **Firebase Anonymous Auth** - Teacher authentication only
+- **Firebase Authentication** - Google/Microsoft OAuth providers (v4.1)
 - **Firebase Hosting** - Static file serving with CDN
 
-### 13.3 External Integrations
+### 14.3 External Integrations
 - **QR Code API** - `https://api.qrserver.com/v1/create-qr-code/`
 - **Multiple AI Providers** - ChatGPT, Claude, Gemini via Cloud Functions
 - **Educational Content** - Any web-based content via iframe embedding
 
 ---
 
-## 14. Development and Deployment
+## 15. Development and Deployment
 
-### 14.1 Build Process
+### 15.1 Build Process
+
 ```python
 # build.py - Production minification
 SOURCE_DIR = 'public'
@@ -1166,7 +1477,8 @@ def main():
                 shutil.copy2(source_path, dest_path)
 ```
 
-### 14.2 File Collection for Development
+### 15.2 File Collection for Development
+
 ```powershell
 # collect2txt.ps1 - Collect all project files for analysis
 $filesToCollect = @(
@@ -1190,40 +1502,80 @@ foreach ($file in $filesToCollect) {
 }
 ```
 
+### 15.3 Authentication Setup (v4.1)
+
+```javascript
+// Firebase Console Configuration
+// 1. Enable Google and Microsoft OAuth providers
+// 2. Add authorized domains: localhost, 127.0.0.1, production domain
+// 3. Configure OAuth consent screen
+// 4. Deploy updated security rules
+
+// Firebase Security Rules Deployment
+firebase deploy --only firestore:rules
+
+// Authentication Flow Testing
+// 1. Test Google OAuth flow
+// 2. Test Microsoft OAuth flow  
+// 3. Verify teacher profile creation
+// 4. Test session persistence
+// 5. Verify room association with teacher UID
+```
+
 ---
 
-## 15. Summary and Key Insights
+## 16. Summary and Key Insights
 
-### 15.1 Core Architecture Principles
-1. **Session-Based Student Auth** - No Firebase authentication required for students
-2. **Real-Time State Synchronization** - Centralized state management via Firestore
-3. **Content Agnostic** - Any web content can be classroom-enabled via iframe
-4. **Teacher-Centric Control** - All administrative functions require teacher authentication
-5. **Progressive Enhancement** - Works without AI, enhanced with AI when available
+### 16.1 Core Architecture Principles
+1. **Authenticated Teacher System** - Provider-based authentication with permanent profiles
+2. **Session-Based Student Access** - No Firebase authentication required for students
+3. **Real-Time State Synchronization** - Centralized state management via Firestore
+4. **Content Agnostic** - Any web content can be classroom-enabled via iframe
+5. **Teacher-Centric Control** - All administrative functions require teacher authentication
+6. **Progressive Enhancement** - Works without AI, enhanced with AI when available
+7. **Gatekeeper Pattern** - Prevents Race Conditions in authentication flow
 
-### 15.2 Security Model
-- **Teacher**: Firebase Anonymous Auth with stable UID
+### 16.2 Security Model (v4.1)
+- **Teacher**: Firebase Provider Auth (Google/Microsoft) with stable UID
 - **Student**: Browser sessionStorage with temporary IDs
-- **Data**: Ephemeral rooms with automated cleanup
+- **Data**: Teacher data is private and persistent, room data is ephemeral and accessible during class
 - **Privacy**: Client-side message filtering for private communications
+- **Access Control**: Firestore security rules enforce teacher-only access to personal data
 
-### 15.3 Real-World Deployment
+### 16.3 Key Features Summary
+- **Personal Content Libraries** - Each teacher manages their own curated content
+- **AI Context Management** - Teachers can apply lesson-specific AI prompts
+- **Real-time Polling** - Multiple poll types with instant results
+- **Private Messaging** - Secure teacher-student communication
+- **Comprehensive Analytics** - AI-powered lesson summaries and insights
+- **Floating UI Components** - Draggable, persistent tools for students
+- **Race Condition Prevention** - Gatekeeper pattern ensures reliable authentication
+
+### 16.4 Real-World Deployment
 The system is deployed at `https://class-board-ad64e.web.app/` with:
 - Static hosting via Firebase Hosting
 - Real-time database via Firestore (europe-west1)
 - Cloud Functions for AI services
+- OAuth authentication for teachers
 - QR code generation for easy student access
 
-### 15.4 Unique Value Proposition
+### 16.5 Unique Value Proposition
 fireClass Control doesn't replace existing educational content—it enhances any web-based content with classroom infrastructure. Teachers can use PhET simulations, Google's Teachable Machine, or any educational website, and instantly gain:
-- Real-time student monitoring
-- Interactive polling and feedback
-- AI-powered analysis and insights
+- Secure teacher authentication and personal profiles
+- Real-time student monitoring with persistent data
+- Interactive polling and feedback with AI analysis
 - Private messaging and communication tools
-- Comprehensive lesson analytics
+- Comprehensive lesson analytics and reporting
+- Personal content libraries and AI context management
 
-The platform bridges the gap between "great online content" and "classroom-ready tools" without requiring content creators to modify their applications.
+The v4.1 platform bridges the gap between "great online content" and "classroom-ready tools" while providing teachers with a secure, personalized environment for managing their digital classroom activities.
 
----
+### 16.6 Critical v4.1 Improvements
+1. **Authentication Reliability** - Gatekeeper pattern eliminates login loops
+2. **Teacher Profiles** - Persistent, authenticated teacher accounts
+3. **Personal Content** - Each teacher manages their own content library
+4. **AI Context Control** - Lesson-specific AI prompts for focused learning
+5. **Security Enhancement** - Provider-based authentication with proper access controls
+6. **Data Persistence** - Teacher data survives across sessions and devices
 
-**This documentation reflects the actual codebase implementation as of July 2025, ensuring complete alignment between specification and working code.**
+**This documentation reflects the actual codebase implementation as of July 2025, ensuring complete alignment between specification and working code, with particular emphasis on the critical authentication improvements that ensure system reliability and teacher confidence.**

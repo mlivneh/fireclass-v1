@@ -1,45 +1,54 @@
-// Firestore Security Rules for Classroom App
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // חדרים - כל מורה יוצר חדר עם קוד 4 ספרות
-    match /rooms/{roomCode} {
-      // כל משתמש מאומת יכול לקרוא ולכתוב בחדר
-      allow read, write: if request.auth != null;
-      
-      // רק המורה של החדר יכול למחוק את החדר
-      allow delete: if request.auth != null && 
-                   request.auth.uid == resource.data.teacher_uid;
-      
-      // תלמידים בחדר
-      match /students/{studentUID} {
-        // כל אחד יכול לראות את רשימת התלמידים
-        allow read: if request.auth != null;
-        
-        // תלמיד יכול ליצור/לעדכן רק את המסמך שלו
-        allow create, update: if request.auth.uid == studentUID;
-        
-        // המורה יכול למחוק תלמידים
-        allow delete: if request.auth.uid == resource.data.teacher_uid;
+
+    // --- Teachers Collection ---
+    // Defines rules for teacher-specific data, like personal content and prompts.
+    match /teachers/{teacherId} {
+
+      // A teacher can read and write ONLY to their own document.
+      allow read, write: if request.auth != null && request.auth.uid == teacherId;
+
+      // A teacher can manage their own personal links.
+      match /personal_links/{linkId} {
+        allow read, write: if request.auth != null && request.auth.uid == teacherId;
       }
-      
-      // הודעות בחדר  
-      match /messages/{messageID} {
-        // כל אחד יכול לקרוא הודעות
-        allow read: if request.auth != null;
-        
-        // כל אחד יכול ליצור הודעות
-        allow create: if request.auth != null;
-        
-        // רק המורה יכול למחוק הודעות
-        allow delete: if request.auth.uid == resource.data.teacher_uid;
+
+      // A teacher can manage their own personal AI prompts.
+      match /personal_prompts/{promptId} {
+        allow read, write: if request.auth != null && request.auth.uid == teacherId;
       }
     }
-    
-    // חוקים לפונקציות ענן (אם יש)
-    match /functions/{functionId} {
-      allow read, write: if false; // רק פונקציות ענן יכולות לגשת
+
+    // --- Global Rooms Collection ---
+    // Defines rules for the shared rooms that students join.
+    match /rooms/{roomCode} {
+
+      // --- Room-level permissions ---
+      allow create: if request.auth != null; // Any authenticated teacher can create a room.
+      allow read: if true; // Anyone (including students) can read room data to join.
+      // Only the teacher who created the room can update or delete it.
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.teacher_uid;
+
+      // --- Students Subcollection ---
+      match /students/{studentId} {
+        allow create, read: if true; // Anyone can join and see the student list.
+        // Only the room's teacher can remove a student.
+        allow delete: if request.auth != null && request.auth.uid == get(/databases/$(database)/documents/rooms/$(roomCode)).data.teacher_uid;
+      }
+
+      // --- Messages Subcollection ---
+      match /messages/{messageId} {
+        allow create, read: if true; // Anyone can send and read messages.
+        // Only the room's teacher can delete messages.
+        allow delete: if request.auth != null && request.auth.uid == get(/databases/$(database)/documents/rooms/$(roomCode)).data.teacher_uid;
+      }
+
+      // --- Question History Subcollection ---
+      match /questionHistory/{questionId} {
+        // Only the room's teacher can read and write the history.
+        allow read, write: if request.auth != null && request.auth.uid == get(/databases/$(database)/documents/rooms/$(roomCode)).data.teacher_uid;
+      }
     }
   }
 }

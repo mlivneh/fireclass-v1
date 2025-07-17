@@ -9,8 +9,8 @@ File 1/11: fireClass-documentation\updated_specs.md
 # fireClass Control - Digital Classroom Management System
 ## Architecture Documentation Based on Existing Codebase
 
-**Version:** 3.2 (Code-Aligned Documentation)  
-**Last Updated:** July 06, 2025
+**Version:** 4.1 (Authentication Upgrade & Race Condition Fix)  
+**Last Updated:** July 17, 2025
 
 ---
 
@@ -21,6 +21,12 @@ Teachers invest significant time creating high-quality presentations in PowerPoi
 **fireClass Control transforms existing presentations from monologues into interactive dialogues.**
 
 It is a real-time digital classroom management system that "wraps" any web-based content—whether it's an external simulation from **PhET**, a tool like **Google's Teachable Machine**, or a custom-built application—with a layer of classroom infrastructure. With a single button click from within their existing PowerPoint slide, a teacher can launch the fireClass Dashboard, turning any slide into a live, interactive, and measurable learning experience without changing their original materials.
+
+### Recent Architectural Evolution (v4.1)
+
+The system has evolved from a centralized configuration model to a teacher-centric personalization platform. Each teacher now manages their own library of content and custom-tailors the AI's behavior to fit their specific pedagogical goals for each lesson, granting unprecedented flexibility and control.
+
+**Critical v4.1 Update**: The authentication system has been completely overhauled to replace anonymous authentication with identified provider-based authentication (Google/Microsoft), implementing a Gatekeeper pattern that resolves Race Condition issues in the login process.
 
 ---
 
@@ -45,13 +51,18 @@ flowchart TD
     subgraph "Firebase Backend (europe-west1)"
         Firestore[(Firestore Database)]
         Functions[Cloud Functions]
-        Auth[Anonymous Authentication<br/>(Teacher Only)]
+        Auth[Provider Authentication<br/>(Google/Microsoft)]
         Hosting[Static Hosting]
     end
 
-    subgraph "Configuration"
-        Config["config.json<br/>(Game URLs & Settings)"]
-        CSS["CSS Files<br/>(Styling)"]
+    subgraph "Authentication Layer (v4.1)"
+        Gatekeeper["Gatekeeper Pattern<br/>(HTML Level)"]
+        AuthState["onAuthStateChanged<br/>(Single Source of Truth)"]
+    end
+
+    subgraph "Data Models"
+        TeacherData["/teachers/{uid}<br/>(Authenticated Profile)"]
+        RoomData["/rooms/{roomCode}<br/>(Ephemeral Class Data)"]
     end
 
     Teacher --> TeacherJS
@@ -63,9 +74,14 @@ flowchart TD
     SDK --> Functions
     SDK --> Auth
     
+    Auth --> Gatekeeper
+    Gatekeeper --> AuthState
+    
+    Firestore --> TeacherData
+    Firestore --> RoomData
+    
     Hosting --> Teacher
     Hosting --> Student
-    Hosting --> Config
     
     PPT -.-> Teacher
 ```
@@ -77,12 +93,98 @@ flowchart TD
 - **Initialization** - `init()` handles teacher vs student differentiation
 - **Real-time Communication** - Firestore snapshot listeners
 - **UI Interfaces** - Creates floating chat and AI interfaces
+- **Authentication** - Google/Microsoft OAuth integration (v4.1)
 
-#### b) User Authentication (Updated in v3.2)
+#### b) User Authentication (Major Update in v4.1)
+
+**Critical Race Condition Fix**: The authentication system suffered from a Race Condition where the application would check authentication status before Firebase had processed redirect results, causing infinite login loops.
+
+**Solution - Gatekeeper Pattern**: Complete separation of authentication logic from application logic.
+
 ```javascript
-// Teacher: Anonymous login with Firebase Authentication
-await this.auth.signInAnonymously();
+// HTML-Level Gatekeeper (index.html)
+auth.onAuthStateChanged(async (user) => {
+    if (user) {
+        // User authenticated - show dashboard and initialize app
+        if (!window.teacherDashboard) {
+            window.teacherDashboard = new TeacherDashboard();
+            await window.teacherDashboard.init(user); 
+        }
+    } else {
+        // User not authenticated - show login interface
+        await auth.getRedirectResult();
+        showLoginInterface();
+    }
+});
+```
 
+**Teacher Authentication - Complete Overhaul**:
+```javascript
+// Google/Microsoft OAuth Implementation
+async loginWithGoogle() {
+    try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        const result = await this.auth.signInWithPopup(provider);
+        return result.user;
+    } catch (error) {
+        console.error('🔥 Google login failed:', error);
+        throw error;
+    }
+}
+
+// Teacher Profile Creation (v4.1)
+async createTeacherProfile(user) {
+    const teacherRef = this.db.collection('teachers').doc(user.uid);
+    const teacherDoc = await teacherRef.get();
+    
+    if (!teacherDoc.exists) {
+        // Create new teacher profile
+        await teacherRef.set({
+            profile: {
+                name: user.displayName || 'Unknown Teacher',
+                email: user.email,
+                photoURL: user.photoURL || null,
+                created_at: firebase.firestore.FieldValue.serverTimestamp(),
+                last_login: firebase.firestore.FieldValue.serverTimestamp()
+            },
+            config: {
+                apps: [
+                    {
+                        name: "AI Model Training",
+                        description: "Visual Recognition training",
+                        icon: "📚",
+                        url: "https://meir.world/face-recognition/"
+                    },
+                    {
+                        name: "Teachable Machine",
+                        description: "Google Teachable Machines",
+                        icon: "🎯",
+                        url: "https://teachablemachine.withgoogle.com/train"
+                    },
+                    {
+                        name: "PhET",
+                        description: "Projectile Data Lab",
+                        icon: "🎯",
+                        url: "https://phet.colorado.edu/sims/html/projectile-data-lab/latest/projectile-data-lab_all.html"
+                    }
+                ],
+                settings: {
+                    default_ai_model: 'gemini',
+                    auto_enable_ai: true
+                }
+            }
+        });
+    } else {
+        // Update existing teacher
+        await teacherRef.update({
+            'profile.last_login': firebase.firestore.FieldValue.serverTimestamp()
+        });
+    }
+}
+```
+
+**Student Authentication - Unchanged**:
+```javascript
 // Student: Session-based ID generation (no Firebase Auth)
 getOrCreateStudentId() {
     let studentId = sessionStorage.getItem('studentId');
@@ -94,7 +196,7 @@ getOrCreateStudentId() {
 }
 ```
 
-**Teacher**: Uses Firebase Anonymous Authentication to obtain a stable, unique UID for creating and managing the classroom.
+**Teacher**: Uses Firebase Provider Authentication (Google/Microsoft) to obtain a stable, unique UID for creating and managing the classroom.
 
 **Student**: **NO Firebase Authentication.** Upon joining, the student app generates a temporary, unique session ID (studentId) stored in sessionStorage. This ID is unique per browser tab and allows for multiple students to be simulated from a single device for testing purposes.
 
@@ -122,15 +224,21 @@ this.classroom.listenForRoomUpdates(this.stateManager.bind(this));  // For AI/po
 this.classroom.listenForMessages(this.messageHandler.bind(this));   // For actual messages
 ```
 
-#### c) Room Management
+#### c) Room Management (Updated for v4.1)
+
 ```javascript
 // Room structure in Firestore
 /rooms/{4-digit-code}/
+├── room_code: string
+├── created_at: timestamp
+├── teacher_uid: string               // NOW: Authenticated Teacher UID
+├── lesson_orientation: string
 ├── settings/
 │   ├── ai_active: boolean
 │   ├── ai_model: string
-│   └── current_command: object
-│   └── currentPoll: {          // Enhanced polling structure
+│   ├── active_prompt_id: string      // Personal AI prompt reference
+│   ├── current_command: object
+│   └── currentPoll: {
 │       ├── id: string
 │       ├── type: string
 │       ├── question: string
@@ -156,17 +264,21 @@ This example demonstrates how the platform transforms a standard lesson into an 
 #### **The "Before" Scenario (Without fireClass):**
 The teacher shows a slide and asks, "How do you think a computer knows this is Homer?" The discussion is verbal, and engagement is hard to track.
 
-#### **The "After" Scenario (With fireClass):**
-1.  **Launch from PowerPoint:** The teacher reaches the relevant slide and clicks a pre-set button. The fireClass Dashboard opens seamlessly.
-2.  **Send Interactive Content:** From the dashboard, the teacher selects the "AI Model Training" app (defined in `config.json`) and sends it to all students.
-3.  **Active, Measurable Learning:**
+#### **The "After" Scenario (With fireClass v4.1):**
+1. **Secure Authentication:** Teacher signs in with Google/Microsoft account
+2. **Personal Profile Loading:** System recognizes returning teacher and loads their personalized dashboard
+3. **Room Creation:** System creates room associated with teacher's authenticated UID
+4. **Personal Content Selection:** From the dashboard, the teacher selects "AI Model Training" from their personal content library
+5. **AI Context Application:** Teacher applies a custom "Face Recognition Learning" AI prompt to focus student interactions
+6. **Active, Measurable Learning:**
     * **Training Phase:** Students are prompted to measure key geometric ratios on a base image of Homer.
     * **Testing Phase:** They test their "trained" model on other images of Homer with different expressions and angles.
     * **Analysis:** A results table shows them a similarity score for each test image, demonstrating why the AI succeeds or fails.
-4.  **Real-time Teacher Insights:** The teacher's dashboard shows each student's results and allows for private chat.
-5.  **Data-Driven Discussion:** The teacher pauses the activity and says, "I see many of you found the AI failed when Homer was surprised. Let's discuss why a change in expression breaks a measurement-based model."
+7. **Real-time Teacher Insights:** The teacher's dashboard shows each student's results and allows for private chat with contextual AI assistance.
+8. **Data-Driven Discussion:** The teacher pauses the activity and says, "I see many of you found the AI failed when Homer was surprised. Let's discuss why a change in expression breaks a measurement-based model."
+9. **Persistent Analytics:** All lesson data is saved to the teacher's authenticated profile for future analysis and improvement.
 
-The platform didn't just show a game; it created a hands-on lab for understanding AI, all launched from the teacher's original presentation.
+The platform didn't just show a game; it created a hands-on lab for understanding AI, all launched from the teacher's original presentation with full authentication security and personalized content management.
 
 ---
 
@@ -195,22 +307,22 @@ The teacher's dashboard maintains a local, in-memory copy of the current poll's 
 ### 5.1 Directory Structure
 ```
 public/
-├── index.html                 # Teacher Dashboard
+├── index.html                 # Teacher Dashboard with Gatekeeper
 ├── student-app.html           # Student Interface  
 ├── firebase-config.js         # Firebase Configuration
-├── config.json               # Games & URLs Configuration
+├── config.json               # Legacy Configuration (deprecated v4.1)
 ├── css/
 │   ├── teacher-dashboard.css  # Teacher Styling (English LTR)
 │   └── student-app.css       # Student Styling (English LTR)
 └── js/
-    ├── ClassroomSDK.js       # Core SDK
-    ├── teacher-dashboard.js  # Teacher Logic
+    ├── ClassroomSDK.js       # Core SDK with OAuth
+    ├── teacher-dashboard.js  # Teacher Logic (Simplified Init)
     └── student-app.js        # Student Logic
 ```
 
 ### 5.2 ClassroomSDK.js - Core Functionality
 
-#### Room Creation (Teacher)
+#### Room Creation (Teacher) - Updated for v4.1
 ```javascript
 async generateUniqueRoomCode() {
     // 20 attempts to find unique 4-digit code
@@ -227,10 +339,30 @@ async generateUniqueRoomCode() {
         }
         attempts++;
     }
+    
+    // Fallback to random code
+    return Math.floor(1000 + Math.random() * 9000).toString();
+}
+
+// Initialize room with authenticated teacher UID
+async initializeRoom(teacherUid) {
+    const roomRef = this.db.collection('rooms').doc(this.roomCode);
+    await roomRef.set({
+        room_code: this.roomCode,
+        created_at: firebase.firestore.FieldValue.serverTimestamp(),
+        teacher_uid: teacherUid,  // Authenticated teacher UID
+        lesson_orientation: 'general',
+        settings: {
+            ai_active: true,
+            ai_model: 'gemini',
+            current_command: null,
+            currentPoll: { isActive: false }
+        }
+    });
 }
 ```
 
-#### Room Joining (Student)
+#### Room Joining (Student) - Unchanged
 ```javascript
 async joinRoom(studentId, playerName) {
     const studentRef = this.db.collection('rooms').doc(this.roomCode)
@@ -342,11 +474,40 @@ stateManager: function(roomData) {
 
 ### 6.1 Teacher Dashboard (index.html + teacher-dashboard.js)
 
+#### Authentication Interface (New v4.1)
+```html
+<!-- Teacher Login Screen -->
+<div id="teacher-login-container" class="login-container" style="display: none;">
+    <div class="login-card">
+        <div class="login-header">
+            <h1>🎓 Teacher Login</h1>
+            <p>Please sign in to access your classroom dashboard</p>
+        </div>
+        
+        <div class="login-buttons">
+            <button id="google-login-btn" class="login-btn google-btn" onclick="startGoogleLogin()">
+                <span class="login-icon">🔍</span>
+                <span>Sign in with Google</span>
+            </button>
+            
+            <button id="microsoft-login-btn" class="login-btn microsoft-btn" onclick="startMicrosoftLogin()">
+                <span class="login-icon">🏢</span>
+                <span>Sign in with Microsoft</span>
+            </button>
+        </div>
+        
+        <div class="login-footer">
+            <p>Secure authentication • Your data stays private</p>
+        </div>
+    </div>
+</div>
+```
+
 #### Top Navigation Menu
 - **Quick Actions** - Pre-made messages for class, including "End Lesson" workflow
-- **Games & Content** - Load URLs from config.json
+- **Games & Content** - Load URLs from personal content library (updated v4.1)
 - **AI Management** - Enable/disable + model selection (ChatGPT/Claude/Gemini)
-- **Tools** - Debug console and data export
+- **Tools** - Debug console, data export, and **Manage Content & AI** (new v4.1)
 - **Polls** - Create quick polls for class
 - **Reports** - Advanced reporting and analytics
 
@@ -589,92 +750,123 @@ displayPollResults(pollData) {
 
 ---
 
-## 8. Configuration System (config.json)
+## 8. Configuration System (Personal Content Libraries - v4.1)
 
-### 8.1 Configuration File Structure
-```json
-{
-  "studentAppUrl": "https://class-board-ad64e.web.app/student-app.html",
-  "games": [
-    {
-      "name": "AI Model Training",
-      "description": "Visual Recognition training",
-      "icon": "📚",
-      "url": "https://meir.world/face-recognition/"
-    },
-    {
-      "name": "TM",
-      "description": "Goggle Teachable Machines",
-      "icon": "🎯",
-      "url": "https://teachablemachine.withgoogle.com/train"
-    },
-    {
-      "name": "PhET",
-      "description": "Projectile Data Lab",
-      "icon": "🎯",
-      "url": "https://phet.colorado.edu/sims/html/projectile-data-lab/latest/projectile-data-lab_all.html"
-    }
-  ]
-}
+### 8.1 Evolution from Global to Personal Configuration
+
+**v3.2 and Earlier**: Single global `config.json` file with predefined content for all teachers.
+
+**v4.1**: Personal content libraries stored in Firestore per authenticated teacher.
+
+### 8.2 Personal Content Management
+
+```javascript
+// Teacher's personal content structure in Firestore
+/teachers/{teacherUid}/
+├── profile: { name, email, photoURL, created_at, last_login }
+├── config: { apps: [], settings: {} }
+├── /personal_links/{linkId}/
+│   ├── title: string
+│   ├── description: string
+│   ├── icon: string
+│   └── url: string
+└── /personal_prompts/{promptId}/
+    ├── title: string
+    └── prompt: string
 ```
 
-### 8.2 Configuration Loading and Usage
+### 8.3 Content Management Interface
+
 ```javascript
-// Teacher dashboard loads config
-async loadConfigData() {
-    try {
-        const response = await fetch('config.json');
-        if (!response.ok) throw new Error('Network response was not ok');
-        this.config = await response.json();
-        this.debugLog('✅ Config file loaded successfully', this.config);
-    } catch (error) {
-        console.error('🔥 Error loading config file:', error);
-        this.config = { studentAppUrl: 'student-app.html', games: [] };
-    }
+// Teacher manages personal content library
+async managePersonalContent() {
+    // Load teacher's personal links
+    const linksSnapshot = await this.sdk.db.collection('teachers')
+        .doc(this.auth.currentUser.uid)
+        .collection('personal_links')
+        .get();
+    
+    const personalLinks = [];
+    linksSnapshot.forEach(doc => {
+        personalLinks.push({ id: doc.id, ...doc.data() });
+    });
+    
+    // Populate content management interface
+    this.populatePersonalContentList(personalLinks);
 }
 
-// Populate games list from config
+// Dynamic content loading in Games & Content menu
 populateGamesList() {
     const container = document.getElementById('game-list-container');
-    const games = this.config?.games || [];
     
-    container.innerHTML = '';
-    
-    games.forEach(game => {
-        const gameElement = document.createElement('a');
-        gameElement.href = '#';
-        gameElement.className = 'dropdown-item';
-        gameElement.onclick = (e) => {
-            e.preventDefault();
-            this.sendSelectedGame(game.url);
-        };
+    // Load from teacher's personal library instead of config.json
+    this.loadPersonalLinks().then(links => {
+        container.innerHTML = '';
+        
+        links.forEach(link => {
+            const linkElement = document.createElement('a');
+            linkElement.href = '#';
+            linkElement.className = 'dropdown-item';
+            linkElement.onclick = (e) => {
+                e.preventDefault();
+                this.sendSelectedGame(link.url);
+            };
 
-        gameElement.innerHTML = `
-            <span class="dropdown-icon">${game.icon || '🔗'}</span>
-            <div class="dropdown-content">
-                <div class="dropdown-title">${game.name}</div>
-                <div class="dropdown-desc">${game.description}</div>
-            </div>
-        `;
-        container.appendChild(gameElement);
+            linkElement.innerHTML = `
+                <span class="dropdown-icon">${link.icon || '🔗'}</span>
+                <div class="dropdown-content">
+                    <div class="dropdown-title">${link.title}</div>
+                    <div class="dropdown-desc">${link.description}</div>
+                </div>
+            `;
+            container.appendChild(linkElement);
+        });
     });
 }
 ```
 
 ---
 
-## 9. Database Structure (Firestore) - Code-Aligned
+## 9. Database Structure (Firestore) - v4.1
 
 ### 9.1 Complete Schema
-```
-/rooms/{4-digit-code}
+
+```javascript
+// Persistent teacher data (NEW v4.1)
+/teachers/{teacherUid}/
+├── profile: {
+│   ├── name: string
+│   ├── email: string
+│   ├── photoURL: string
+│   ├── created_at: timestamp
+│   └── last_login: timestamp
+│   }
+├── config: {
+│   ├── apps: array (default content from createTeacherProfile)
+│   └── settings: {
+│       ├── default_ai_model: string
+│       └── auto_enable_ai: boolean
+│       }
+│   }
+├── /personal_links/{linkId}/
+│   ├── title: string
+│   ├── description: string
+│   ├── icon: string
+│   └── url: string
+└── /personal_prompts/{promptId}/
+    ├── title: string
+    └── prompt: string
+
+// Ephemeral classroom sessions (UPDATED v4.1)
+/rooms/{roomCode}/
 ├── room_code: string
 ├── created_at: timestamp
-├── last_activity: timestamp
-├── teacher_uid: string (from Firebase Anonymous Auth)
+├── teacher_uid: string (authenticated teacher UID)
+├── lesson_orientation: string
 ├── settings: {
 │   ├── ai_active: boolean
-│   ├── ai_model: string ('chatgpt'|'claude'|'gemini')
+│   ├── ai_model: string ('gemini'|'chatgpt'|'claude')
+│   ├── active_prompt_id: string (links to teacher's personal prompt)
 │   ├── current_command: {
 │   │   ├── command: string
 │   │   ├── payload: object
@@ -717,43 +909,67 @@ populateGamesList() {
 
 ---
 
-## 9. Security and Privacy Model
+## 10. Security and Privacy Model (Updated v4.1)
 
-### 9.1 Authentication Architecture
-**Teacher**: Uses Firebase Anonymous Authentication to get a stable UID for room management and administrative operations.
+### 10.1 Authentication Architecture
+
+**Teacher**: Uses Firebase Provider Authentication (Google/Microsoft) to get a stable UID for room management and administrative operations.
 
 **Student**: **No Firebase Authentication whatsoever.** Uses browser sessionStorage-based unique IDs that persist only for the session.
 
-### 9.2 Firestore Security Rules (Updated)
+### 10.2 Firestore Security Rules (Updated v4.1)
+
 ```javascript
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Rooms can be read by anyone with the room code
-    match /rooms/{roomId} {
-      allow read: if true;
-      allow write: if request.auth != null; // Only authenticated teachers
+    
+    // Teachers Collection - Personal data protection
+    match /teachers/{teacherId} {
+      // A teacher can read and write ONLY to their own document and subcollections
+      allow read, write: if request.auth != null && request.auth.uid == teacherId;
+
+      match /personal_links/{linkId} {
+        allow read, write: if request.auth != null && request.auth.uid == teacherId;
+      }
       
-      // Students collection - anyone can join (unauthenticated writes allowed)
+      match /personal_prompts/{promptId} {
+        allow read, write: if request.auth != null && request.auth.uid == teacherId;
+      }
+    }
+
+    // Global Rooms Collection - Class interaction
+    match /rooms/{roomCode} {
+      allow create: if request.auth != null; // Any authenticated teacher can create
+      allow read: if true; // Anyone can read room data to join
+      // Only the teacher who created the room can update or delete it
+      allow update, delete: if request.auth != null && 
+        request.auth.uid == resource.data.teacher_uid;
+      
+      // Subcollections are open for real-time class interaction
       match /students/{studentId} {
-        allow read, write: if true; // Open for session-based students
+        allow create, read: if true;
+        allow delete: if request.auth != null && 
+          request.auth.uid == get(/databases/$(database)/documents/rooms/$(roomCode)).data.teacher_uid;
       }
       
-      // Messages collection - anyone can send messages
       match /messages/{messageId} {
-        allow read, write: if true; // Open for session-based students
+        allow create, read: if true;
+        allow delete: if request.auth != null && 
+          request.auth.uid == get(/databases/$(database)/documents/rooms/$(roomCode)).data.teacher_uid;
       }
       
-      // Question history - teacher only
       match /questionHistory/{questionId} {
-        allow read, write: if request.auth != null;
+        allow read, write: if request.auth != null && 
+          request.auth.uid == get(/databases/$(database)/documents/rooms/$(roomCode)).data.teacher_uid;
       }
     }
   }
 }
 ```
 
-### 9.3 Privacy Protection
+### 10.3 Privacy Protection
+
 ```javascript
 // Private message filtering (client-side)
 listenForMessages(callback) {
@@ -783,18 +999,22 @@ listenForMessages(callback) {
 
 ---
 
-## 10. Typical Workflow
+## 11. Typical Workflow (Updated v4.1)
 
-### 10.1 Class Setup
-1. **Teacher** opens `index.html`, system auto-generates 4-digit room code
-2. **Teacher** shares code with students (QR code displayed in header)
-3. **Students** navigate to `student-app.html?classroom={code}` (auto-populates room code)
-4. **Students** enter name, system generates session-based `studentId`
-5. **Real-time connection** established, teacher sees students appear
+### 11.1 Class Setup
 
-### 10.2 Content Delivery
+1. **Teacher Authentication** - Teacher opens `index.html`, Gatekeeper prompts for Google/Microsoft login
+2. **Profile Loading** - System loads or creates teacher profile with personal settings
+3. **Room Creation** - System auto-generates 4-digit room code associated with teacher UID
+4. **Student Access** - Teacher shares code with students (QR code displayed in header)
+5. **Student Joining** - Students navigate to `student-app.html?classroom={code}` (auto-populates room code)
+6. **Session Creation** - Students enter name, system generates session-based `studentId`
+7. **Real-time Connection** - Connection established, teacher sees students appear
+
+### 11.2 Content Delivery (Updated v4.1)
+
 ```javascript
-// Teacher selects content from config.json
+// Teacher selects content from personal library
 sendSelectedGame(url) {
     this.sendCommand('LOAD_CONTENT', { url });
     // Closes modal automatically
@@ -811,7 +1031,51 @@ stateManager: function(roomData) {
 }
 ```
 
-### 10.3 Real-time Polling Workflow
+### 11.3 AI Context Management (New v4.1)
+
+```javascript
+// Teacher applies personal AI prompt to classroom
+async setClassroomAIContext(promptId) {
+    const roomRef = this.sdk.db.collection('rooms').doc(this.sdk.getRoomCode());
+    await roomRef.update({
+        'settings.active_prompt_id': promptId,
+        'last_activity': firebase.firestore.FieldValue.serverTimestamp()
+    });
+    
+    this.addActivity(`🤖 AI context updated: ${promptTitle}`);
+}
+
+// Cloud Function applies context to student AI requests
+exports.askAI = functions.https.onCall(async (data, context) => {
+    const { prompt, roomCode, language } = data;
+    
+    // Get room data to check for active prompt
+    const roomDoc = await admin.firestore().collection('rooms').doc(roomCode).get();
+    const roomData = roomDoc.data();
+    
+    let contextualPrompt = prompt;
+    
+    // Apply teacher's selected context if available
+    if (roomData.settings?.active_prompt_id) {
+        const promptDoc = await admin.firestore()
+            .collection('teachers').doc(roomData.teacher_uid)
+            .collection('personal_prompts').doc(roomData.settings.active_prompt_id)
+            .get();
+        
+        if (promptDoc.exists) {
+            const systemPrompt = promptDoc.data().prompt;
+            contextualPrompt = `${systemPrompt}\n\nStudent question: ${prompt}`;
+        }
+    }
+    
+    // Send to AI service with context
+    const aiResponse = await callAIService(contextualPrompt, language);
+    return { result: aiResponse, model: 'gemini' };
+});
+```
+
+### 11.4 Real-time Polling Workflow
+
 1. **Teacher** creates poll through dashboard menu
 2. **System** assigns unique poll ID and sets `isActive: true`
 3. **Students** automatically see poll interface via `stateManager`
@@ -819,7 +1083,7 @@ stateManager: function(roomData) {
 5. **Teacher** sees real-time results and can request AI analysis
 6. **Teacher** stops poll when ready, system saves to question history
 
-### 10.4 Enhanced Communication Flow
+### 11.5 Enhanced Communication Flow
 
 #### Real-time Message Architecture
 The system uses a dual-stream approach for optimal performance:
@@ -866,9 +1130,10 @@ This architecture ensures **complete separation** between system commands and hu
 
 ---
 
-## 11. Advanced Features
+## 12. Advanced Features
 
-### 11.1 AI Analysis System
+### 12.1 AI Analysis System
+
 ```javascript
 // Teacher requests AI analysis of current poll responses
 async handleAiAnalysis(type) {
@@ -901,7 +1166,8 @@ async handleAiAnalysis(type) {
 }
 ```
 
-### 11.2 End-of-Lesson Reporting
+### 12.2 End-of-Lesson Reporting
+
 ```javascript
 // Generate comprehensive lesson summary
 async generateLessonSummary() {
@@ -954,7 +1220,8 @@ buildLessonSummaryPrompt(lessonData) {
 }
 ```
 
-### 11.3 Private Messaging System
+### 12.3 Private Messaging System
+
 ```javascript
 // Teacher sends private message to specific student
 async sendPrivateMessage() {
@@ -989,7 +1256,8 @@ async sendPrivateMessage(content, recipientUid) {
 }
 ```
 
-### 11.4 Floating UI Components (Student)
+### 12.4 Floating UI Components (Student)
+
 ```javascript
 // Create draggable chat interface for students
 createChatInterface() {
@@ -1047,9 +1315,10 @@ makeDraggable(element, dragHandle = null) {
 
 ---
 
-## 12. Code Quality and Error Handling
+## 13. Code Quality and Error Handling
 
-### 12.1 Message Deduplication
+### 13.1 Message Deduplication
+
 ```javascript
 // Prevent duplicate message display
 addSingleMessage(message) {
@@ -1068,7 +1337,8 @@ addSingleMessage(message) {
 }
 ```
 
-### 12.2 Room Validation
+### 13.2 Room Validation
+
 ```javascript
 // Validate room exists before joining (Student)
 async checkRoomExists(roomCode) {
@@ -1103,9 +1373,10 @@ handleLogin: async function(event) {
 }
 ```
 
-### 12.3 Configuration Fallbacks
+### 13.3 Configuration Fallbacks
+
 ```javascript
-// Robust config loading with fallbacks
+// Robust config loading with fallbacks (Legacy support)
 async loadConfigData() {
     try {
         const response = await fetch('config.json');
@@ -1123,32 +1394,72 @@ async loadConfigData() {
 }
 ```
 
+### 13.4 Authentication State Management (v4.1)
+
+```javascript
+// Simplified teacher dashboard initialization
+async init(user) {
+    if (!user) {
+        console.error("❌ CRITICAL: TeacherDashboard.init called without a user.");
+        return;
+    }
+    
+    console.log(`🚀 Initializing dashboard for confirmed user: ${user.uid}`);
+    
+    try {
+        // Core initialization with authenticated user
+        this.sdk = new ClassroomSDK();
+        await this.loadConfigData();
+        await this.sdk.createTeacherProfile(user);
+        await this.sdk.init('teacher-dashboard', user);
+        
+        // Setup UI and listeners
+        this.setupEventListeners();
+        this.sdk.createAIInterface();
+        this.initializeTeacherAI();
+        
+        // Real-time listeners
+        this.sdk.listenForStudents(this.updateStudentsList.bind(this));
+        this.sdk.listenForMessages(this.addMessage.bind(this));
+        this.sdk.listenForRoomUpdates(this.handleRoomUpdates.bind(this));
+        
+        this.updateConnectionStatus(true);
+        this.updateRoomDisplay();
+        
+    } catch (error) {
+        console.error("🔥 Critical initialization error:", error);
+        this.updateConnectionStatus(false);
+    }
+}
+```
+
 ---
 
-## 13. Technologies and Dependencies
+## 14. Technologies and Dependencies
 
-### 13.1 Frontend Stack
+### 14.1 Frontend Stack
 - **HTML5 + CSS3** - Responsive interface with LTR English layout
 - **Vanilla JavaScript ES6+** - No external frameworks, modern JS features
 - **Firebase SDK v9 (compat)** - Real-time database and authentication
 - **CSS Grid + Flexbox** - Advanced responsive layouts
 
-### 13.2 Backend Services
+### 14.2 Backend Services
 - **Firebase Firestore** - Real-time NoSQL database with offline support
 - **Firebase Cloud Functions** - AI services (`askAI`, `askChatGPT`) in europe-west1
-- **Firebase Anonymous Auth** - Teacher authentication only
+- **Firebase Authentication** - Google/Microsoft OAuth providers (v4.1)
 - **Firebase Hosting** - Static file serving with CDN
 
-### 13.3 External Integrations
+### 14.3 External Integrations
 - **QR Code API** - `https://api.qrserver.com/v1/create-qr-code/`
 - **Multiple AI Providers** - ChatGPT, Claude, Gemini via Cloud Functions
 - **Educational Content** - Any web-based content via iframe embedding
 
 ---
 
-## 14. Development and Deployment
+## 15. Development and Deployment
 
-### 14.1 Build Process
+### 15.1 Build Process
+
 ```python
 # build.py - Production minification
 SOURCE_DIR = 'public'
@@ -1174,7 +1485,8 @@ def main():
                 shutil.copy2(source_path, dest_path)
 ```
 
-### 14.2 File Collection for Development
+### 15.2 File Collection for Development
+
 ```powershell
 # collect2txt.ps1 - Collect all project files for analysis
 $filesToCollect = @(
@@ -1198,43 +1510,83 @@ foreach ($file in $filesToCollect) {
 }
 ```
 
+### 15.3 Authentication Setup (v4.1)
+
+```javascript
+// Firebase Console Configuration
+// 1. Enable Google and Microsoft OAuth providers
+// 2. Add authorized domains: localhost, 127.0.0.1, production domain
+// 3. Configure OAuth consent screen
+// 4. Deploy updated security rules
+
+// Firebase Security Rules Deployment
+firebase deploy --only firestore:rules
+
+// Authentication Flow Testing
+// 1. Test Google OAuth flow
+// 2. Test Microsoft OAuth flow  
+// 3. Verify teacher profile creation
+// 4. Test session persistence
+// 5. Verify room association with teacher UID
+```
+
 ---
 
-## 15. Summary and Key Insights
+## 16. Summary and Key Insights
 
-### 15.1 Core Architecture Principles
-1. **Session-Based Student Auth** - No Firebase authentication required for students
-2. **Real-Time State Synchronization** - Centralized state management via Firestore
-3. **Content Agnostic** - Any web content can be classroom-enabled via iframe
-4. **Teacher-Centric Control** - All administrative functions require teacher authentication
-5. **Progressive Enhancement** - Works without AI, enhanced with AI when available
+### 16.1 Core Architecture Principles
+1. **Authenticated Teacher System** - Provider-based authentication with permanent profiles
+2. **Session-Based Student Access** - No Firebase authentication required for students
+3. **Real-Time State Synchronization** - Centralized state management via Firestore
+4. **Content Agnostic** - Any web content can be classroom-enabled via iframe
+5. **Teacher-Centric Control** - All administrative functions require teacher authentication
+6. **Progressive Enhancement** - Works without AI, enhanced with AI when available
+7. **Gatekeeper Pattern** - Prevents Race Conditions in authentication flow
 
-### 15.2 Security Model
-- **Teacher**: Firebase Anonymous Auth with stable UID
+### 16.2 Security Model (v4.1)
+- **Teacher**: Firebase Provider Auth (Google/Microsoft) with stable UID
 - **Student**: Browser sessionStorage with temporary IDs
-- **Data**: Ephemeral rooms with automated cleanup
+- **Data**: Teacher data is private and persistent, room data is ephemeral and accessible during class
 - **Privacy**: Client-side message filtering for private communications
+- **Access Control**: Firestore security rules enforce teacher-only access to personal data
 
-### 15.3 Real-World Deployment
+### 16.3 Key Features Summary
+- **Personal Content Libraries** - Each teacher manages their own curated content
+- **AI Context Management** - Teachers can apply lesson-specific AI prompts
+- **Real-time Polling** - Multiple poll types with instant results
+- **Private Messaging** - Secure teacher-student communication
+- **Comprehensive Analytics** - AI-powered lesson summaries and insights
+- **Floating UI Components** - Draggable, persistent tools for students
+- **Race Condition Prevention** - Gatekeeper pattern ensures reliable authentication
+
+### 16.4 Real-World Deployment
 The system is deployed at `https://class-board-ad64e.web.app/` with:
 - Static hosting via Firebase Hosting
 - Real-time database via Firestore (europe-west1)
 - Cloud Functions for AI services
+- OAuth authentication for teachers
 - QR code generation for easy student access
 
-### 15.4 Unique Value Proposition
+### 16.5 Unique Value Proposition
 fireClass Control doesn't replace existing educational content—it enhances any web-based content with classroom infrastructure. Teachers can use PhET simulations, Google's Teachable Machine, or any educational website, and instantly gain:
-- Real-time student monitoring
-- Interactive polling and feedback
-- AI-powered analysis and insights
+- Secure teacher authentication and personal profiles
+- Real-time student monitoring with persistent data
+- Interactive polling and feedback with AI analysis
 - Private messaging and communication tools
-- Comprehensive lesson analytics
+- Comprehensive lesson analytics and reporting
+- Personal content libraries and AI context management
 
-The platform bridges the gap between "great online content" and "classroom-ready tools" without requiring content creators to modify their applications.
+The v4.1 platform bridges the gap between "great online content" and "classroom-ready tools" while providing teachers with a secure, personalized environment for managing their digital classroom activities.
 
----
+### 16.6 Critical v4.1 Improvements
+1. **Authentication Reliability** - Gatekeeper pattern eliminates login loops
+2. **Teacher Profiles** - Persistent, authenticated teacher accounts
+3. **Personal Content** - Each teacher manages their own content library
+4. **AI Context Control** - Lesson-specific AI prompts for focused learning
+5. **Security Enhancement** - Provider-based authentication with proper access controls
+6. **Data Persistence** - Teacher data survives across sessions and devices
 
-**This documentation reflects the actual codebase implementation as of July 2025, ensuring complete alignment between specification and working code.**
+**This documentation reflects the actual codebase implementation as of July 2025, ensuring complete alignment between specification and working code, with particular emphasis on the critical authentication improvements that ensure system reliability and teacher confidence.**
 
 ================================================================================
 File 2/11: functions\index.js
@@ -1282,87 +1634,75 @@ exports.askAI = onCall({
   region: DEPLOY_REGION,
   secrets: [geminiApiKey, claudeApiKey, openaiApiKey]
 }, async (request) => {
-  console.log("🎯 askAI called with:", request.data);
-  
+  console.log("🎯 askAI v2 called with:", request.data);
+
   if (!request.auth) {
-    console.error("❌ No authentication provided");
     throw new HttpsError("unauthenticated", "Authentication required");
   }
 
   let prompt = request.data.prompt;
   const roomCode = request.data.roomCode;
   const language = request.data.language;
-  
+  const bypassContext = request.data.bypassContext || false;
+
   if (!prompt || !roomCode) {
-    console.error("❌ No prompt or roomCode provided");
     throw new HttpsError("invalid-argument", "Prompt and roomCode are required");
   }
 
-  // 🎯 עטיפת הפרומפט לפי שפה
-  if (language === 'he') {
-    prompt = `Please answer the following prompt in Hebrew:\n\n"${prompt}"`;
-  } else {
-    prompt = `Please answer the following prompt in English:\n\n"${prompt}"`;
-  }
-
   try {
-    const roomRef = admin.firestore().collection('rooms').doc(roomCode);
+    const db = admin.firestore();
+    const roomRef = db.collection('rooms').doc(roomCode);
     const roomDoc = await roomRef.get();
-    
+
     if (!roomDoc.exists) {
-      console.error("❌ Room not found:", roomCode);
       throw new HttpsError("not-found", "Room not found");
     }
-    
+
     const roomData = roomDoc.data();
-    
-    // 🎯 --- תחילת הלוגיקה החדשה ---
     const teacherUid = roomData.teacher_uid;
     const isTeacherRequest = request.auth.uid === teacherUid;
-    const aiActive = roomData.settings?.ai_active === true;
-    
-    console.log(`Request Details: isTeacher=${isTeacherRequest}, aiActiveForStudents=${aiActive}`);
-    
-    // אם הבקשה היא לא מהמורה, וגם ה-AI כבוי לתלמידים - חסום את הבקשה.
-    if (!isTeacherRequest && !aiActive) {
-      console.log("🔴 AI request blocked for student (AI is off).");
+
+    if (!isTeacherRequest && !roomData.settings?.ai_active) {
       throw new HttpsError("failed-precondition", "AI is disabled for this classroom");
     }
-    // 🎯 --- סוף הלוגיקה החדשה ---
-    
-    const selectedModel = roomData.settings?.ai_model || 'chatgpt';
-    console.log(`🎯 Room ${roomCode} selected model: ${selectedModel}`);
-    
+
+    const selectedModel = roomData.settings?.ai_model || 'gemini';
+    let finalPrompt = prompt;
+
+    // Apply context ONLY if it's a student request AND context is not bypassed
+    if (!isTeacherRequest && !bypassContext) {
+        const activePromptId = roomData.settings?.active_prompt_id;
+        if (activePromptId) {
+            const promptDoc = await db.collection('teachers').doc(teacherUid).collection('personal_prompts').doc(activePromptId).get();
+            if (promptDoc.exists) {
+                const systemPrompt = promptDoc.data().prompt;
+                finalPrompt = `${systemPrompt}\n\nStudent's question: "${prompt}"`;
+                console.log(`Applying context: ${promptDoc.data().title}`);
+            }
+        }
+    } else {
+        console.log("Context bypassed for teacher or explicit request.");
+    }
+
+    // Language wrapping
+    if (language === 'he') {
+        finalPrompt = `Please answer the following prompt in Hebrew:\n\n"${finalPrompt}"`;
+    }
+
     let result;
     switch (selectedModel) {
-      case 'chatgpt':
-        result = await callChatGPT(prompt);
-        break;
-      case 'claude':
-        result = await callClaude(prompt);
-        break;
-      case 'gemini':
-        result = await callGemini(prompt);
-        break;
-      default:
-        console.log(`⚠️ Unknown model ${selectedModel}, falling back to ChatGPT`);
-        result = await callChatGPT(prompt);
-        break;
+      case 'chatgpt': result = await callChatGPT(finalPrompt); break;
+      case 'claude': result = await callClaude(finalPrompt); break;
+      default: result = await callGemini(finalPrompt); break;
     }
-    
+
     await roomRef.update({ 'last_activity': admin.firestore.FieldValue.serverTimestamp() });
-    
-    console.log(`✅ AI response generated successfully using ${selectedModel}`);
-    return { 
-      result: result.text, 
-      model: result.modelName 
-    };
-    
+
+    return { result: result.text, model: result.modelName };
+
   } catch (error) {
     console.error("❌ Error in askAI:", error);
-    if (error instanceof HttpsError) {
-      throw error;
-    }
+    if (error instanceof HttpsError) throw error;
     throw new HttpsError("internal", "Internal server error");
   }
 });
@@ -1750,18 +2090,6 @@ class ClassroomSDK {
         this.studentsListener = null;
         this.messagesListener = null;
         this.roomListener = null;
-    }
-
-    // Anonymous authentication
-    async loginAnonymously() {
-        try {
-            const userCredential = await this.auth.signInAnonymously();
-            console.log('✅ Anonymous login successful:', userCredential.user.uid);
-            return userCredential.user;
-        } catch (error) {
-            console.error('🔥 Anonymous login failed:', error);
-            throw error;
-        }
     }
 
     // Generate unique 4-digit room code
@@ -2230,15 +2558,12 @@ class ClassroomSDK {
         return document.documentElement.lang || 'en';
     }
 
-    async sendAIMessage(prompt, language) {
-        // Check if AI is disabled for students
+    async sendAIMessage(prompt, language, bypassContext = false) {
         if (!this.isTeacher && !this.isAiActiveForClass) {
             this.addAIMessage("🤖", "AI is not available at the moment.", false);
             return;
         }
-
         if (!language) language = this.getInterfaceLanguage();
-
         if (!this.functions) {
             this.addAIMessage("🤖", "Error: AI service not initialized", false);
             return;
@@ -2247,16 +2572,19 @@ class ClassroomSDK {
 
         try {
             const askAIFunction = this.functions.httpsCallable('askAI');
-            const result = await askAIFunction({ prompt, roomCode: this.roomCode, language });
+            const result = await askAIFunction({ 
+                prompt, 
+                roomCode: this.roomCode, 
+                language,
+                bypassContext // New parameter
+            });
             const senderName = result.data.model ? `🤖 (${result.data.model})` : "🤖";
             this.addAIMessage(senderName, result.data.result, false);
+            return result.data; // Return the full result object
         } catch (error) {
             console.error("🔥 Error calling askAI:", error);
-            let errorMsg = "An error occurred with the AI service.";
-            if (error.code === 'functions/unauthenticated') {
-                errorMsg = "Authentication error. Please reconnect.";
-            }
-            this.addAIMessage("🤖", errorMsg, false);
+            this.addAIMessage("🤖", `Error: ${error.message}`, false);
+            return null;
         }
     }
 
@@ -2560,6 +2888,7 @@ class TeacherDashboard {
         // 🔧 English locale fix - set locale
         this.locale = 'en-US';
         this.rtlSupport = false;
+        this.isContentManagerInitialized = false;
     }
 
     // Debugging utility with English support
@@ -2597,12 +2926,8 @@ class TeacherDashboard {
             console.log('🔍 SDK created:', !!this.sdk);
             console.log('🔍 SDK toggleAI method:', !!this.sdk.toggleAI);
             
-            const user = await this.sdk.loginAnonymously();
-            this.debugLog("👑 Teacher logged in successfully", { uid: user.uid });
-
-            await this.sdk.init('teacher-dashboard', user);
-            this.debugLog(`✅ Teacher dashboard initialized with room: ${this.sdk.getRoomCode()}`);
-
+            await this.handleSuccessfulLogin(this.sdk.auth.currentUser);
+            
             // וודא שה-SDK מוכן לפני יצירת AI
             console.log('🔍 Final SDK check before AI init:');
             console.log('- SDK exists:', !!this.sdk);
@@ -3037,13 +3362,21 @@ class TeacherDashboard {
     updateConnectionStatus(isConnected) {
         const statusDiv = document.getElementById('connectionStatus');
         if (!statusDiv) return;
+
+        // Remove old classes and stop animation
+        statusDiv.className = '';
+        statusDiv.style.animation = 'none';
+
         if (isConnected) {
-            statusDiv.textContent = '🟢 Connected to Firebase';
-            statusDiv.className = 'connection-status connected';
+            statusDiv.classList.add('connected');
+            statusDiv.setAttribute('title', 'Connected to Firebase');
         } else {
-            statusDiv.textContent = '🔴 Not Connected';
-            statusDiv.className = 'connection-status disconnected';
+            statusDiv.classList.add('disconnected');
+            statusDiv.setAttribute('title', 'Not Connected');
         }
+        // Force restart animation for visual feedback
+        void statusDiv.offsetWidth;
+        statusDiv.style.animation = 'pulse 2s infinite';
     }
 
     addActivity(activityText) {
@@ -3345,6 +3678,22 @@ class TeacherDashboard {
                 this.resetStudentScreens();
             }
         });
+
+        document.getElementById('reset-screens-action')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (confirm('Are you sure you want to reset all student screens?')) {
+                this.resetStudentScreens();
+            }
+        });
+
+        // Logout button
+        document.getElementById('logout-action-btn')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.logout();
+        });
+
+        // === הוספת קריאה ל-initContentManager ב-setupEventListeners ===
+        this.setupContentManager();
     }
 
     openPrivateMessageModal(student) {
@@ -3442,35 +3791,29 @@ class TeacherDashboard {
         this.populateGamesList();
     }
 
+    // === החלפת populateGamesList בפונקציה חדשה ===
     populateGamesList() {
         const container = document.getElementById('game-list-container');
         if (!container) return;
 
-        const games = this.config?.games || []; // 🎯 Change here
-        container.innerHTML = ''; // Clear previous content
+        const content = this.personalContent || [];
+        container.innerHTML = '';
 
-        if (games.length === 0) {
-            container.innerHTML = '<p>No games found in config.json</p>';
+        if (content.length === 0) {
+            container.innerHTML = '<p style="padding: 15px; text-align: center;">You haven\'t added any personal content yet. Go to Tools > Manage Content & AI to add some.</p>';
             return;
         }
 
-        games.forEach(game => {
-            const gameElement = document.createElement('a');
-            gameElement.href = '#';
-            gameElement.className = 'dropdown-item'; // Reuse existing CSS
-            gameElement.onclick = (e) => {
+        content.forEach(item => {
+            const element = document.createElement('a');
+            element.href = '#';
+            element.className = 'dropdown-item';
+            element.onclick = (e) => {
                 e.preventDefault();
-                this.sendSelectedGame(game.url);
+                this.sendSelectedGame(item.url);
             };
-
-            gameElement.innerHTML = `
-                <span class="dropdown-icon">${game.icon || '🔗'}</span>
-                <div class="dropdown-content">
-                    <div class="dropdown-title">${game.name}</div>
-                    <div class="dropdown-desc">${game.description}</div>
-                </div>
-            `;
-            container.appendChild(gameElement);
+            element.innerHTML = `<span class="dropdown-icon">${item.icon || '🔗'}</span><div class="dropdown-content"><div class="dropdown-title">${item.title}</div><div class="dropdown-desc">${item.description}</div></div>`;
+            container.appendChild(element);
         });
     }
 
@@ -3773,6 +4116,396 @@ class TeacherDashboard {
             this.addActivity('⏹️ All student screens have been cleared.');
         } catch (error) {
             console.error("Error resetting student screens:", error);
+        }
+    }
+
+    // =======================================================
+    // ========= CONTENT & PROMPT MANAGEMENT LOGIC ===========
+    // =======================================================
+
+    async loadPersonalData() {
+        if (!this.sdk || !this.sdk.auth.currentUser) return;
+        const teacherUid = this.sdk.auth.currentUser.uid;
+
+        // Load personal content
+        try {
+            const contentRef = this.sdk.db.collection('teachers').doc(teacherUid).collection('personal_links');
+            const contentSnapshot = await contentRef.get();
+            this.personalContent = contentSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        } catch (error) {
+            console.error("Error loading personal content:", error);
+            this.personalContent = [];
+        }
+
+        // Load personal prompts
+        try {
+            const promptsRef = this.sdk.db.collection('teachers').doc(teacherUid).collection('personal_prompts');
+            const promptsSnapshot = await promptsRef.get();
+            this.personalPrompts = promptsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        } catch (error) {
+            console.error("Error loading personal prompts:", error);
+            this.personalPrompts = [];
+        }
+
+        this.debugLog('✅ Personal content and prompts loaded', {
+            content: this.personalContent,
+            prompts: this.personalPrompts
+        });
+    }
+
+    // === Gemini approach for modal event listeners ===
+    setupContentManager() {
+        const openBtn = document.getElementById('open-content-manager-btn');
+        if (openBtn) {
+            openBtn.addEventListener('click', () => {
+                const modal = document.getElementById('content-manager-modal');
+                if (modal) {
+                    // Initialize listeners inside the modal only ONCE, the first time it's opened.
+                    if (!this.isContentManagerInitialized) {
+                        this.initModalEventListeners(modal);
+                        this.isContentManagerInitialized = true;
+                    }
+                    this.renderPersonalContentList();
+                    this.renderPersonalPromptsList();
+                    this.populateActivePromptSelector();
+                    modal.classList.add('visible');
+                }
+            });
+        } else {
+            // This log helps if the button itself is missing for some reason.
+            console.error("Could not find the 'open-content-manager-btn'.");
+        }
+    }
+
+    initModalEventListeners(modal) {
+        // Tab switching logic
+        modal.querySelectorAll('.tab-link').forEach(button => {
+            button.addEventListener('click', () => {
+                modal.querySelectorAll('.tab-link, .tab-content').forEach(el => el.classList.remove('active'));
+                button.classList.add('active');
+                document.getElementById(button.dataset.tab).classList.add('active');
+            });
+        });
+
+        // Close modal button
+        modal.querySelector('.modal-close').addEventListener('click', () => modal.classList.remove('visible'));
+
+        // Content Management Forms & Buttons
+        document.getElementById('personal-content-form').addEventListener('submit', this.handleSavePersonalContent.bind(this));
+        document.getElementById('cancel-content-edit').addEventListener('click', this.resetContentForm.bind(this));
+
+        // Prompt Management Forms & Buttons
+        document.getElementById('personal-prompt-form').addEventListener('submit', this.handleSavePersonalPrompt.bind(this));
+        document.getElementById('cancel-prompt-edit').addEventListener('click', this.resetPromptForm.bind(this));
+        document.getElementById('generate-prompt-suggestion-btn').addEventListener('click', this.generatePromptSuggestion.bind(this));
+        document.getElementById('active-prompt-selector').addEventListener('change', this.setActivePrompt.bind(this));
+    }
+
+    renderPersonalContentList() {
+        const list = document.getElementById('personal-content-list');
+        if (!list) return;
+        list.innerHTML = '';
+        (this.personalContent || []).forEach(item => {
+            const el = document.createElement('div');
+            el.className = 'list-item';
+            el.innerHTML = `
+                <span class="list-item-icon">${item.icon}</span>
+                <div class="list-item-details">
+                    <div class="list-item-title">${item.title}</div>
+                    <div class="list-item-desc">${item.description}</div>
+                </div>
+                <div class="list-item-actions">
+                    <button class="edit-btn" data-id="${item.id}">✏️</button>
+                    <button class="delete-btn" data-id="${item.id}">🗑️</button>
+                </div>
+            `;
+            el.querySelector('.edit-btn').addEventListener('click', () => this.editContentItem(item.id));
+            el.querySelector('.delete-btn').addEventListener('click', () => this.deleteContentItem(item.id));
+            list.appendChild(el);
+        });
+    }
+
+    renderPersonalPromptsList() {
+        const list = document.getElementById('personal-prompts-list');
+        if (!list) return;
+        list.innerHTML = '';
+        (this.personalPrompts || []).forEach(prompt => {
+            const el = document.createElement('div');
+            el.className = 'list-item';
+            el.innerHTML = `
+                <span class="list-item-icon">🎯</span>
+                <div class="list-item-details">
+                    <div class="list-item-title">${prompt.title}</div>
+                    <div class="list-item-desc">${prompt.prompt}</div>
+                </div>
+                <div class="list-item-actions">
+                    <button class="edit-btn" data-id="${prompt.id}">✏️</button>
+                    <button class="delete-btn" data-id="${prompt.id}">🗑️</button>
+                </div>
+            `;
+            el.querySelector('.edit-btn').addEventListener('click', () => this.editPromptItem(prompt.id));
+            el.querySelector('.delete-btn').addEventListener('click', () => this.deletePromptItem(prompt.id));
+            list.appendChild(el);
+        });
+    }
+
+    populateActivePromptSelector() {
+        const selector = document.getElementById('active-prompt-selector');
+        if (!selector) return;
+        selector.innerHTML = '<option value="general">General (Open Context)</option>';
+        (this.personalPrompts || []).forEach(prompt => {
+            const option = document.createElement('option');
+            option.value = prompt.id;
+            option.textContent = prompt.title;
+            selector.appendChild(option);
+        });
+        // You might want to get the active prompt from room settings and set it here
+    }
+
+    async handleSavePersonalContent(e) {
+        e.preventDefault();
+        const teacherUid = this.sdk.auth.currentUser.uid;
+        const form = e.target;
+        const contentId = form.querySelector('#content-id').value;
+        const data = {
+            title: form.querySelector('#content-title').value,
+            description: form.querySelector('#content-desc').value,
+            icon: form.querySelector('#content-icon').value,
+            url: form.querySelector('#content-url').value,
+        };
+
+        const collectionRef = this.sdk.db.collection('teachers').doc(teacherUid).collection('personal_links');
+        if (contentId) { // Update
+            await collectionRef.doc(contentId).update(data);
+        } else { // Create
+            await collectionRef.add(data);
+        }
+        await this.loadPersonalData();
+        this.renderPersonalContentList();
+        this.resetContentForm();
+    }
+
+    editContentItem(id) {
+        const item = this.personalContent.find(c => c.id === id);
+        const form = document.getElementById('personal-content-form');
+        if (!form) return;
+        form.querySelector('#content-id').value = item.id;
+        form.querySelector('#content-title').value = item.title;
+        form.querySelector('#content-desc').value = item.description;
+        form.querySelector('#content-icon').value = item.icon;
+        form.querySelector('#content-url').value = item.url;
+        const cancelBtn = document.getElementById('cancel-content-edit');
+        if (cancelBtn) cancelBtn.style.display = 'inline-block';
+    }
+
+    resetContentForm() {
+        const form = document.getElementById('personal-content-form');
+        if (form) form.reset();
+        const idInput = document.getElementById('content-id');
+        if (idInput) idInput.value = '';
+        const cancelBtn = document.getElementById('cancel-content-edit');
+        if (cancelBtn) cancelBtn.style.display = 'none';
+    }
+
+    async deleteContentItem(id) {
+        if (!confirm('Are you sure you want to delete this content?')) return;
+        const teacherUid = this.sdk.auth.currentUser.uid;
+        await this.sdk.db.collection('teachers').doc(teacherUid).collection('personal_links').doc(id).delete();
+        await this.loadPersonalData();
+        this.renderPersonalContentList();
+    }
+
+    async generatePromptSuggestion() {
+        const subject = document.getElementById('prompt-subject-selector')?.value;
+        const keywords = document.getElementById('prompt-keywords-input')?.value;
+
+        if (!subject) {
+            alert('Please select a main subject first.');
+            return;
+        }
+
+        let goalDescription = `The main subject of the lesson is '${subject}'.`;
+        if (keywords) {
+            goalDescription += ` The specific topics or keywords are: '${keywords}'.`;
+        }
+
+        const metaPrompt = `You are an expert in pedagogical prompt engineering. A teacher described their lesson goal as follows: "${goalDescription}". Based on this, write an effective system prompt in English. The prompt should instruct an AI to act as a helpful teaching assistant, answer only questions directly related to the specified subject and keywords, and politely decline off-topic questions by reminding the student to focus on the lesson.`;
+
+        this.addActivity('🤖 Asking AI for a prompt suggestion...');
+        const result = await this.sdk.sendAIMessage(metaPrompt, 'en', true); // true to bypass context
+        if (result && result.text) {
+            const promptContent = document.getElementById('prompt-content');
+            if (promptContent) promptContent.value = result.text;
+            // Automatically generate a title
+            const title = subject + (keywords ? `: ${keywords}` : '');
+            const promptTitle = document.getElementById('prompt-title');
+            if (promptTitle) promptTitle.value = title;
+        } else {
+            alert('The AI could not generate a suggestion. Please try again.');
+        }
+    }
+
+    async handleSavePersonalPrompt(e) {
+        e.preventDefault();
+        const teacherUid = this.sdk.auth.currentUser.uid;
+        const form = e.target;
+        const promptId = form.querySelector('#prompt-id').value;
+        const data = {
+            title: form.querySelector('#prompt-title').value,
+            prompt: form.querySelector('#prompt-content').value,
+        };
+
+        const collectionRef = this.sdk.db.collection('teachers').doc(teacherUid).collection('personal_prompts');
+        if (promptId) { // Update
+            await collectionRef.doc(promptId).update(data);
+        } else { // Create
+            await collectionRef.add(data);
+        }
+        await this.loadPersonalData();
+        this.renderPersonalPromptsList();
+        this.populateActivePromptSelector();
+        this.resetPromptForm();
+    }
+
+    editPromptItem(id) {
+        const item = this.personalPrompts.find(p => p.id === id);
+        const form = document.getElementById('personal-prompt-form');
+        if (!form) return;
+        form.querySelector('#prompt-id').value = item.id;
+        form.querySelector('#prompt-title').value = item.title;
+        form.querySelector('#prompt-content').value = item.prompt;
+        const cancelBtn = document.getElementById('cancel-prompt-edit');
+        if (cancelBtn) cancelBtn.style.display = 'inline-block';
+    }
+
+    resetPromptForm() {
+        const form = document.getElementById('personal-prompt-form');
+        if (form) form.reset();
+        const idInput = document.getElementById('prompt-id');
+        if (idInput) idInput.value = '';
+        const cancelBtn = document.getElementById('cancel-prompt-edit');
+        if (cancelBtn) cancelBtn.style.display = 'none';
+        const promptGoalInput = document.getElementById('prompt-goal-input');
+        if (promptGoalInput) promptGoalInput.value = '';
+    }
+
+    async deletePromptItem(id) {
+        if (!confirm('Are you sure you want to delete this prompt?')) return;
+        const teacherUid = this.sdk.auth.currentUser.uid;
+        await this.sdk.db.collection('teachers').doc(teacherUid).collection('personal_prompts').doc(id).delete();
+        await this.loadPersonalData();
+        this.renderPersonalPromptsList();
+        this.populateActivePromptSelector();
+    }
+
+    async setActivePrompt(e) {
+        const promptId = e.target.value;
+        const roomRef = this.sdk.db.collection('rooms').doc(this.sdk.getRoomCode());
+        await roomRef.update({ 'settings.active_prompt_id': promptId === 'general' ? null : promptId });
+        this.addActivity(`✅ AI context set to: ${e.target.options[e.target.selectedIndex].text}`);
+    }
+
+    // ========== AUTHENTICATION METHODS ==========
+
+    async handleSuccessfulLogin(user) {
+        console.log("🚀 Handling successful login...");
+        this.sdk = new ClassroomSDK();
+
+        // 1. Get or create teacher profile
+        await this.getOrCreateTeacherProfile(user);
+
+        // 2. Initialize SDK
+        await this.sdk.init('teacher-dashboard', user);
+        this.debugLog(`✅ Teacher dashboard initialized with room: ${this.sdk.getRoomCode()}`);
+
+        // 3. Setup UI and Listeners
+        this.sdk.createAIInterface();
+        this.initializeTeacherAI();
+        this.sdk.listenForStudents(this.updateStudentsList.bind(this));
+        this.sdk.listenForMessages(this.addMessage.bind(this));
+        this.sdk.listenForRoomUpdates(this.handleRoomUpdates.bind(this)); // Use a dedicated handler
+
+        this.updateConnectionStatus(true);
+        this.setupEventListeners(); // Re-run to attach listeners to new elements
+        this.updateRoomDisplay();
+
+        // 4. טען תכנים והנחיות אישיות
+        await this.loadPersonalData();
+
+        // 5. Show the main app UI
+        document.querySelector('.header').style.display = 'block';
+        document.querySelector('.main-content').style.display = 'flex';
+        document.getElementById('login-container').style.display = 'none';
+        document.getElementById('loading-overlay').classList.add('hidden');
+        console.log("🎉 Dashboard is ready and visible.");
+    }
+
+    async getOrCreateTeacherProfile(user) {
+        const teacherRef = this.sdk.db.collection('teachers').doc(user.uid);
+        const doc = await teacherRef.get();
+
+        if (!doc.exists) {
+            console.log(`Creating new teacher profile for: ${user.displayName}`);
+            await teacherRef.set({
+                displayName: user.displayName,
+                email: user.email,
+                photoURL: user.photoURL,
+                created_at: firebase.firestore.FieldValue.serverTimestamp(),
+                last_login: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        } else {
+            console.log(`Teacher ${user.displayName} exists. Updating last login.`);
+            await teacherRef.update({
+                last_login: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
+    }
+
+    showLoginScreen() {
+        document.querySelector('.header').style.display = 'none';
+        document.querySelector('.main-content').style.display = 'none';
+        document.getElementById('loading-overlay').classList.add('hidden');
+        const loginContainer = document.getElementById('login-container');
+        loginContainer.style.display = 'flex';
+
+        document.getElementById('google-signin-btn').onclick = () => this.signInWithProvider('google');
+        document.getElementById('microsoft-signin-btn').onclick = () => this.signInWithProvider('microsoft');
+    }
+
+    async signInWithProvider(providerName) {
+        let provider;
+        if (providerName === 'google') {
+            provider = new firebase.auth.GoogleAuthProvider();
+        } else if (providerName === 'microsoft') {
+            provider = new firebase.auth.OAuthProvider('microsoft.com');
+        } else {
+            return;
+        }
+
+        try {
+            await firebase.auth().signInWithPopup(provider);
+        } catch (error) {
+            console.error(`${providerName} Sign-In Error:`, error);
+            alert(`Failed to sign in with ${providerName}.`);
+        }
+    }
+
+    logout() {
+        firebase.auth().signOut();
+    }
+
+    // Helper to prevent code duplication
+    handleRoomUpdates(roomData) {
+        if (!roomData || !roomData.settings) return;
+
+        if (roomData.settings.currentPoll) {
+            this.displayPollResults(roomData.settings.currentPoll);
+        }
+
+        const aiIsActiveInDB = roomData.settings.ai_active === true;
+        if (this.isAiActive !== aiIsActiveInDB) {
+            this.isAiActive = aiIsActiveInDB;
+            this.updateAIButton();
         }
     }
 }
@@ -4188,201 +4921,145 @@ File 6/11: public\index.html
     <div id="loading-overlay">
         <div class="spinner"></div>
     </div>
-    <!-- Header with Professional Navigation -->
-    <header class="header">
-        <div class="nav-container">
+    <!-- ==================== NEW LOGIN SCREEN START ==================== -->
+<div id="login-container" class="login-overlay" style="display: none;">
+    <div class="login-box">
+        <div class="logo">
+            <span class="logo-icon">⚙️</span>
+            <span class="logo-text">fireClass Control</span>
+        </div>
+        <p>Welcome, please sign in to continue.</p>
+
+        <div class="signin-options-title">Signin Options</div>
+
+        <div class="signin-options">
+            <button id="google-signin-btn" class="signin-btn" title="Sign in with Google">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google Logo">
+            </button>
+            <button id="microsoft-signin-btn" class="signin-btn" title="Sign in with Microsoft">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg" alt="Microsoft Logo">
+            </button>
+        </div>
+    </div>
+</div>
+<!-- ===================== NEW LOGIN SCREEN END ===================== -->
+
+    <!-- ==================== NEW HEADER START ==================== -->
+<header class="header">
+    <div class="nav-container">
+        <!-- Left Side: Logo and Room Code -->
+        <div class="header-left">
             <div class="logo">
                 <span class="logo-icon">⚙️</span>
                 <span class="logo-text">fireClass Control</span>
             </div>
-            
             <div id="header-room-display" class="header-room-display">
-                <span class="room-code-label">Room Code:</span>
+                <span class="room-code-label">Room:</span>
                 <span id="header-room-code" class="room-code-value">...</span>
-                <img id="qr-code-image" class="qr-code" alt="QR Code for Classroom" title="Click to copy student link"/>
-            </div>
-            
-            <nav>
-                <ul class="nav-menu">
-                    <!-- Quick Actions -->
-                    <li class="nav-item">
-                        <a href="#" class="nav-link">
-                            <span class="nav-icon">⚡</span>
-                            <span>Quick Actions</span>
-                        </a>
-                        <div class="dropdown">
-                            <div class="dropdown-header">Quick actions for lesson management</div>
-                            <a href="#" class="dropdown-item success-item" onclick="sendQuickMessage('Let\'s start the lesson!')">
-                                <span class="dropdown-icon">🎓</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">Start Lesson</div>
-                                    <div class="dropdown-desc">Send message to all students</div>
-                                </div>
-                            </a>
-                            <a href="#" class="dropdown-item warning-item" onclick="sendQuickMessage('Time for a break! Come back in 5 minutes.')">
-                                <span class="dropdown-icon">☕</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">Break Time</div>
-                                    <div class="dropdown-desc">Announce break time</div>
-                                </div>
-                            </a>
-                            <a href="#" class="dropdown-item" onclick="sendQuickMessage('The lesson has ended. Well done everyone!')">
-                                <span class="dropdown-icon">✅</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">End Lesson</div>
-                                    <div class="dropdown-desc">Finish the lesson</div>
-                                </div>
-                            </a>
-                            <a href="#" class="dropdown-item danger-item" onclick="resetClassroomData()">
-                                <span class="dropdown-icon">🔄</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">New Lesson</div>
-                                    <div class="dropdown-desc">Clear all lesson data</div>
-                                </div>
-                            </a>
-                        </div>
-                    </li>
-
-                    <!-- Games and Content -->
-                    <li class="nav-item">
-                        <a href="#" class="nav-link" onclick="window.teacherDashboard.openContentModal()">
-                            <span class="nav-icon">🎮</span>
-                            <span>Games & Content</span>
-                        </a>
-                    </li>
-
-                    <!-- AI Management -->
-                    <li class="nav-item">
-                        <a href="#" class="nav-link" id="aiMenuLink">
-                            <span class="nav-icon">🤖</span>
-                            <span>AI Management</span>
-                        </a>
-                        <div class="dropdown">
-                            <div class="dropdown-header">AI Assistant settings for students</div>
-                            
-                            <a href="#" class="dropdown-item" id="toggleAI" onclick="console.log('🟢 TRACE: AI button clicked'); window.teacherDashboard.toggleAIForClass()">
-                                <span class="dropdown-icon" id="aiStatusIcon">🔴</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title" id="aiStatusText">AI disabled for students</div>
-                                    <div class="dropdown-desc">Click to enable</div>
-                                </div>
-                            </a>
-                            
-                            <div style="padding: 10px 20px; border-top: 1px solid #f0f2f5; background: #f8f9fa;">
-                                <strong style="font-size: 14px; color: #555;">🎯 Select model for class:</strong>
-                                <div style="font-size: 12px; color: #777; margin-top: 2px;">Current model: <span class="current-ai-model">ChatGPT</span></div>
-                            </div>
-                            
-                            <a href="#" class="dropdown-item ai-model-btn" data-model="chatgpt" onclick="window.teacherDashboard.switchAIModel('chatgpt')">
-                                <span class="dropdown-icon">🤖</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">ChatGPT</div>
-                                    <div class="dropdown-desc">Advanced model from OpenAI</div>
-                                </div>
-                            </a>
-                            
-                            <a href="#" class="dropdown-item ai-model-btn" data-model="claude" onclick="window.teacherDashboard.switchAIModel('claude')">
-                                <span class="dropdown-icon">🧠</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">Claude</div>
-                                    <div class="dropdown-desc">Smart model from Anthropic</div>
-                                </div>
-                            </a>
-                            
-                            <a href="#" class="dropdown-item ai-model-btn" data-model="gemini" onclick="window.teacherDashboard.switchAIModel('gemini')">
-                                <span class="dropdown-icon">✨</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">Gemini</div>
-                                    <div class="dropdown-desc">Google's model</div>
-                                </div>
-                            </a>
-                        </div>
-                    </li>
-
-                    <!-- Tools -->
-                    <li class="nav-item">
-                        <a href="#" class="nav-link">
-                            <span class="nav-icon">🔧</span>
-                            <span>Tools</span>
-                        </a>
-                        <div class="dropdown">
-                            <div class="dropdown-header">Utilities and debugging tools</div>
-                            <a href="#" class="dropdown-item" onclick="toggleDebug()">
-                                <span class="dropdown-icon">🐛</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">Debug Console</div>
-                                    <div class="dropdown-desc">Show technical information</div>
-                                </div>
-                            </a>
-                            <a href="#" class="dropdown-item" onclick="exportData()">
-                                <span class="dropdown-icon">📊</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">Export Data</div>
-                                    <div class="dropdown-desc">Save student list and messages</div>
-                                </div>
-                            </a>
-                        </div>
-                    </li>
-
-                    <!-- Polls -->
-                    <li class="nav-item">
-                        <a href="#" class="nav-link">
-                            <span class="nav-icon">📊</span>
-                            <span>Polls</span>
-                        </a>
-                        <div class="dropdown">
-                            <a href="#" class="dropdown-item" onclick="window.teacherDashboard.openPollCreationModal()">
-                                <span class="dropdown-icon">➕</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">Start New Poll</div>
-                                    <div class="dropdown-desc">Send quick question to class</div>
-                                </div>
-                            </a>
-                        </div>
-                    </li>
-
-                    <!-- Reports -->
-                    <li class="nav-item">
-                        <a href="#" class="nav-link">
-                            <span class="nav-icon">📊</span>
-                            <span>Reports</span>
-                        </a>
-                        <div class="dropdown">
-                            <div class="dropdown-header">Reports and analytics (FFU)</div>
-                            <a href="#" class="dropdown-item" onclick="generateLessonSummary()">
-                                <span class="dropdown-icon">📋</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">Lesson Summary</div>  
-                                    <div class="dropdown-desc">Comprehensive AI report of entire lesson</div>
-                                </div>
-                            </a>
-                            <a href="#" class="dropdown-item" onclick="exportLessonData()">
-                                <span class="dropdown-icon">💾</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">Export Lesson Data</div>
-                                    <div class="dropdown-desc">Save all data to file</div>
-                                </div>
-                            </a>
-                        </div>
-                    </li>
-                </ul>
-            </nav>
-
-            <!-- Add this button right after the <nav> element -->
-            <button id="resetScreensBtn" title="Stop current activity and clear all student screens" style="background: #e74c3c; color: white; border: none; padding: 8px 16px; border-radius: 20px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 18px;">⏹️</span>
-                <span>Clear Screens</span>
-            </button>
-
-            <div class="status-indicator" id="connectionStatus">
-                <div class="status-dot"></div>
-                <span>Connecting...</span>
+                <img id="qr-code-image" class="qr-code" alt="QR Code" title="Click to copy student link"/>
             </div>
         </div>
-    </header>
+
+        <!-- Center: Navigation Menu -->
+        <nav class="header-center">
+            <ul class="nav-menu">
+                <!-- Quick Actions -->
+                <li class="nav-item">
+                    <a href="#" class="nav-link"><span class="nav-icon">⚡</span><span>Quick Actions</span></a>
+                    <div class="dropdown">
+                        <div class="dropdown-header">Quick actions for lesson management</div>
+                        <a href="#" class="dropdown-item success-item" onclick="sendQuickMessage('Let\'s start the lesson!')"><span class="dropdown-icon">🎓</span><div class="dropdown-content"><div class="dropdown-title">Start Lesson</div><div class="dropdown-desc">Send message to all students</div></div></a>
+                        <a href="#" class="dropdown-item warning-item" onclick="sendQuickMessage('Time for a break! Come back in 5 minutes.')"><span class="dropdown-icon">☕</span><div class="dropdown-content"><div class="dropdown-title">Break Time</div><div class="dropdown-desc">Announce break time</div></div></a>
+                        <a href="#" class="dropdown-item" onclick="sendQuickMessage('The lesson has ended. Well done everyone!')"><span class="dropdown-icon">✅</span><div class="dropdown-content"><div class="dropdown-title">End Lesson</div><div class="dropdown-desc">Finish the lesson</div></div></a>
+                        <a href="#" class="dropdown-item danger-item" onclick="resetClassroomData()"><span class="dropdown-icon">🔄</span><div class="dropdown-content"><div class="dropdown-title">New Lesson</div><div class="dropdown-desc">Clear all lesson data</div></div></a>
+                    </div>
+                </li>
+                <!-- Games and Content -->
+                <li class="nav-item">
+                    <a href="#" class="nav-link" onclick="window.teacherDashboard.openContentModal()"><span class="nav-icon">🎮</span><span>Games & Content</span></a>
+                </li>
+                <!-- AI Management -->
+                <li class="nav-item">
+                    <a href="#" class="nav-link" id="aiMenuLink"><span class="nav-icon">🤖</span><span>AI Management</span></a>
+                    <div class="dropdown">
+                        <div class="dropdown-header">AI Assistant settings for students</div>
+                        <a href="#" class="dropdown-item" id="toggleAI" onclick="console.log('🟢 TRACE: AI button clicked'); window.teacherDashboard.toggleAIForClass()"><span class="dropdown-icon" id="aiStatusIcon">🔴</span><div class="dropdown-content"><div class="dropdown-title" id="aiStatusText">AI disabled for students</div><div class="dropdown-desc">Click to enable</div></div></a>
+                        <div style="padding: 10px 20px; border-top: 1px solid #f0f2f5; background: #f8f9fa;"><strong style="font-size: 14px; color: #555;">🎯 Select model for class:</strong><div style="font-size: 12px; color: #777; margin-top: 2px;">Current model: <span class="current-ai-model">ChatGPT</span></div></div>
+                        <a href="#" class="dropdown-item ai-model-btn" data-model="chatgpt" onclick="window.teacherDashboard.switchAIModel('chatgpt')"><span class="dropdown-icon">🤖</span><div class="dropdown-content"><div class="dropdown-title">ChatGPT</div><div class="dropdown-desc">Advanced model from OpenAI</div></div></a>
+                        <a href="#" class="dropdown-item ai-model-btn" data-model="claude" onclick="window.teacherDashboard.switchAIModel('claude')"><span class="dropdown-icon">🧠</span><div class="dropdown-content"><div class="dropdown-title">Claude</div><div class="dropdown-desc">Smart model from Anthropic</div></div></a>
+                        <a href="#" class="dropdown-item ai-model-btn" data-model="gemini" onclick="window.teacherDashboard.switchAIModel('gemini')"><span class="dropdown-icon">✨</span><div class="dropdown-content"><div class="dropdown-title">Gemini</div><div class="dropdown-desc">Google's model</div></div></a>
+                    </div>
+                </li>
+                <!-- Tools -->
+                <li class="nav-item">
+                    <a href="#" class="nav-link"><span class="nav-icon">🔧</span><span>Tools</span></a>
+                    <div class="dropdown">
+                        <div class="dropdown-header">Utilities and debugging tools</div>
+                        <a href="#" class="dropdown-item" onclick="toggleDebug()"><span class="dropdown-icon">🐛</span><div class="dropdown-content"><div class="dropdown-title">Debug Console</div><div class="dropdown-desc">Show technical information</div></div></a>
+                        <a href="#" class="dropdown-item" onclick="exportData()"><span class="dropdown-icon">📊</span><div class="dropdown-content"><div class="dropdown-title">Export Data</div><div class="dropdown-desc">Save student list and messages</div></div></a>
+                        <a href="#" class="dropdown-item" id="open-content-manager-btn">
+                            <span class="dropdown-icon">📚</span>
+                            <div class="dropdown-content">
+                                <div class="dropdown-title">Manage Content & AI</div>
+                                <div class="dropdown-desc">Edit your personal links and AI prompts</div>
+                            </div>
+                        </a>
+                    </div>
+                </li>
+                <!-- Polls -->
+                <li class="nav-item">
+                    <a href="#" class="nav-link"><span class="nav-icon">📊</span><span>Polls</span></a>
+                    <div class="dropdown">
+                        <a href="#" class="dropdown-item" onclick="window.teacherDashboard.openPollCreationModal()"><span class="dropdown-icon">➕</span><div class="dropdown-content"><div class="dropdown-title">Start New Poll</div><div class="dropdown-desc">Send quick question to class</div></div></a>
+                    </div>
+                </li>
+                <!-- Reports -->
+                <li class="nav-item">
+                    <a href="#" class="nav-link"><span class="nav-icon">📊</span><span>Reports</span></a>
+                    <div class="dropdown">
+                        <div class="dropdown-header">Reports and analytics (FFU)</div>
+                        <a href="#" class="dropdown-item" onclick="generateLessonSummary()"><span class="dropdown-icon">📋</span><div class="dropdown-content"><div class="dropdown-title">Lesson Summary</div><div class="dropdown-desc">Comprehensive AI report of entire lesson</div></div></a>
+                        <a href="#" class="dropdown-item" onclick="exportLessonData()"><span class="dropdown-icon">💾</span><div class="dropdown-content"><div class="dropdown-title">Export Lesson Data</div><div class="dropdown-desc">Save all data to file</div></div></a>
+                    </div>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Right Side: Actions & Status -->
+        <div class="header-right">
+            <!-- New End Lesson Button with Dropdown -->
+            <div class="dropdown-action-btn" id="end-lesson-controls">
+                <button class="main-action-icon">✖</button>
+                <div class="dropdown">
+                    <a href="#" class="dropdown-item" id="reset-screens-action">
+                        <span class="dropdown-icon">⏹️</span>
+                        <div class="dropdown-content">
+                            <div class="dropdown-title">Clear Screens</div>
+                            <div class="dropdown-desc">Reset all student screens</div>
+                        </div>
+                    </a>
+                    <a href="#" class="dropdown-item danger-item" id="end-lesson-action" onclick="document.getElementById('end-lesson-modal').classList.add('visible')">
+                        <span class="dropdown-icon">🚫</span>
+                        <div class="dropdown-content">
+                            <div class="dropdown-title">Exit Lesson</div>
+                            <div class="dropdown-desc">End lesson and show report options</div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- New Logout Button -->
+            <button id="logout-action-btn" class="main-action-icon green" title="Logout">🚪</button>
+
+            <!-- New Connection Status Indicator -->
+            <div id="connectionStatus" title="Connecting..."></div>
+        </div>
+    </div>
+</header>
+<!-- ===================== NEW HEADER END ===================== -->
 
     <!-- Main Content -->
-    <div class="main-content">
+    <div class="main-content" style="display: none;">
         <!-- Students Section -->
         <div class="section">
             <h2>👥 Connected Students (<span id="studentsCount">0</span>)</h2>
@@ -4566,6 +5243,88 @@ File 6/11: public\index.html
     <script src="js/ClassroomSDK.js"></script>
     <script src="js/teacher-dashboard.js"></script>
 
+    <!-- =========================================================== -->
+    <!-- ========= CONTENT & AI PROMPT MANAGEMENT MODAL V2 ========= -->
+    <!-- =========================================================== -->
+    <div id="content-manager-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 1000px; height: 80vh;">
+            <div class="modal-header">
+                <h3>📚 Manage Your Content & AI Contexts</h3>
+                <button class="modal-close">×</button>
+            </div>
+            <div class="modal-body" style="padding: 0; display: flex; flex-direction: column; height: calc(100% - 70px);">
+                <!-- Tabs Navigation -->
+                <div class="tabs">
+                    <button class="tab-link active" data-tab="tab-my-content">My Content</button>
+                    <button class="tab-link" data-tab="tab-my-prompts">My AI Prompts</button>
+                </div>
+
+                <!-- Tab 1: My Content (Links) -->
+                <div id="tab-my-content" class="tab-content active two-column-grid">
+                    <div class="column-left scrollable">
+                        <h4>My Content Library</h4>
+                        <div class="content-list" id="personal-content-list">
+                            <!-- Personal links will be dynamically inserted here -->
+                        </div>
+                    </div>
+                    <div class="column-right">
+                        <h4>Add / Edit Content</h4>
+                        <form id="personal-content-form">
+                            <input type="text" id="content-title" placeholder="Title (e.g., 'PhET Simulation')" required>
+                            <input type="text" id="content-desc" placeholder="Description" required>
+                            <input type="text" id="content-icon" placeholder="Icon (e.g., '🎯')" required>
+                            <input type="url" id="content-url" placeholder="https://..." required>
+                            <input type="hidden" id="content-id">
+                            <button type="submit">Save Content</button>
+                            <button type="button" id="cancel-content-edit" class="secondary" style="display:none;">Cancel Edit</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Tab 2: My AI Prompts -->
+                <div id="tab-my-prompts" class="tab-content two-column-grid">
+                    <div class="column-left scrollable">
+                        <h4>My Prompt Library</h4>
+                        <div class="content-list" id="personal-prompts-list">
+                            <!-- Personal prompts will be dynamically inserted here -->
+                        </div>
+                    </div>
+                    <div class="column-right">
+                        <h4>Prompt Creation Wizard</h4>
+                        <div class="prompt-wizard">
+                            <form id="personal-prompt-form">
+                                <p>1. Select a main subject:</p>
+                                <select id="prompt-subject-selector" required>
+                                    <option value="" disabled selected>Choose a subject...</option>
+                                    <option value="General">General</option>
+                                    <option value="Math">Math</option>
+                                    <option value="Physics">Physics</option>
+                                    <option value="Biology">Biology</option>
+                                    <option value="History">History</option>
+                                    <option value="Literature">Literature</option>
+                                    <option value="Computer Science">Computer Science</option>
+                                </select>
+
+                                <p>2. Add specific keywords (optional):</p>
+                                <input type="text" id="prompt-keywords-input" placeholder="e.g., Pythagorean theorem, triangles">
+
+                                <button type="button" id="generate-prompt-suggestion-btn">Create a Prompt for Me</button>
+
+                                <hr>
+
+                                <p>3. Refine the suggested prompt and save it:</p>
+                                <input type="text" id="prompt-title" placeholder="Prompt Title (e.g., 'Pythagorean Theorem')" required>
+                                <textarea id="prompt-content" rows="5" required></textarea>
+                                <input type="hidden" id="prompt-id">
+                                <button type="submit">Save Prompt</button>
+                                <button type="button" id="cancel-prompt-edit" class="secondary" style="display:none;">Cancel Edit</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <script>
         console.log('🟢 TRACE: index.html loaded');
         
@@ -4578,14 +5337,22 @@ File 6/11: public\index.html
         console.log('🔍 Firebase initialized');
         console.log('🔍 ClassroomSDK available:', typeof ClassroomSDK);
         
-        window.addEventListener('load', () => {
-            console.log('🟢 TRACE: Window loaded, initializing teacher dashboard');
-            window.teacherDashboard = new TeacherDashboard();
-            window.teacherDashboard.init().then(() => {
-                console.log('✅ Teacher dashboard fully initialized');
-            }).catch(error => {
-                console.error('❌ Teacher dashboard initialization failed:', error);
-            });
+        window.teacherDashboard = new TeacherDashboard();
+        firebase.auth().onAuthStateChanged(user => {
+            if (user) {
+                // User is signed in.
+                console.log('✅ User is signed in:', user.uid);
+                document.getElementById('loading-overlay').classList.remove('hidden'); // Show loading
+                window.teacherDashboard.handleSuccessfulLogin(user)
+                    .catch(err => {
+                        console.error("Login handling failed", err);
+                        window.teacherDashboard.logout(); // Logout on error
+                    });
+            } else {
+                // User is signed out.
+                console.log('🚪 User is signed out.');
+                window.teacherDashboard.showLoginScreen();
+            }
         });
         
         // פונקציות גלובליות
@@ -4770,7 +5537,7 @@ File 9/11: firebase.json
     }
   ],
   "hosting": {
-    "public": "BUILD",
+    "public": "public",
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -4778,6 +5545,7 @@ File 9/11: firebase.json
     ]
   }
 }
+
 
 ================================================================================
 File 10/11: functions\package.json
@@ -4815,234 +5583,78 @@ File 10/11: functions\package.json
 File 11/11: installation_guide.md
 ================================================================================
 
-# Complete Installation and Deployment Guide: Interactive Classroom System
+<div dir="rtl">
+# מדריך התקנה מלא: מערכת כיתה אינטראקטיבית (גרסה 5.0)
 
-This guide combines the initial installation process with deployment instructions, designed for setting up a new and clean environment on Firebase from scratch. The guide describes the manual process, and at the end presents scripts for automating the process.
+מסמך זה מתאר את כל השלבים הנדרשים להתקנת הפרויקט מ-א' ועד ת' על סביבת Firebase חדשה ונקייה.
 
----
+## שלב 0: דרישות מוקדמות
 
-## Step 0: Prerequisites
+ודא שהכלים הבאים מותקנים על המחשב שלך:
+* **Node.js**: כולל את מנהל החבילות `npm`.
+* **Firebase CLI**: אם לא מותקן, הרץ בטרמינל: `npm install -g firebase-tools`.
+* **חשבונות**: חשבון Google וחשבונות עבור ממשקי ה-API החיצוניים (OpenAI, Anthropic).
 
-Ensure the following tools are installed on your computer:
-* **Node.js**: Including the `npm` package manager.
-* **Firebase CLI**: If not installed, run in terminal:
-    ```bash
-    npm install -g firebase-tools
-    ```
-* **Accounts**: Google account and accounts for external API services (e.g., OpenAI, Anthropic, Gemini).
+## שלב 1: יצירת פרויקט Firebase
 
----
+1.  היכנס ל[מסוף Firebase](https://console.firebase.google.com/) וצור פרויקט חדש.
+2.  במהלך ההקמה, תתבקש לבחור **Default GCP resource location**. בחר **`europe-west1 (Belgium)`**. זהו צעד קריטי לאיחוד כל השירותים.
 
-## Step 1: Creating a Project and Environment in Firebase
+## שלב 2: הפעלת שירותי ענן
 
-This step is performed in the Firebase console.
+בתוך הפרויקט החדש שיצרת:
+* **Firestore Database**: צור מסד נתונים חדש ובחר את המיקום: **`europe-west1 (Belgium)`**.
+* **Authentication**: הפעל את שיטת ההתחברות **Anonymous**.
+* **Secret Manager API**: ודא שה-API מופעל ב-Google Cloud Console עבור הפרויקט שלך.
 
-### 1. Creating a New Project
-* Go to the [Firebase Console](https://console.firebase.google.com/) and create a new project with a unique name (e.g., `interactive-class-prod`).
-* During setup, you'll be asked to choose a default location for resources (**Default GCP resource location**). **This step is critical**. Choose a location that will be identical for all services, for example **`europe-west1 (Belgium)`**.
-* Ensure the **"Enable Google Analytics for this project"** option is checked.
+## שלב 3: יצירת מפתחות API חיצוניים
 
-### 2. Upgrading to Blaze Payment Plan
-* After creating the project, go to billing settings (gear icon > `Usage and billing`).
-* Upgrade the project to the **Blaze (Pay as you go)** plan. This is a mandatory step to use the Cloud Functions required by the system.
+1.  צור מפתחות API עבור **Gemini, Claude ו-ChatGPT** דרך הפלטפורמות הרשמיות שלהם.
+2.  שמור את שלושת המפתחות במקום בטוח וזמין.
 
----
+## שלב 4: הגדרת הפרויקט המקומי
 
-## Step 2: Enabling Services and Setting Rules
+1.  צור תיקייה חדשה, העתק אליה את קבצי המקור, והרץ בה `git init`.
+2.  הרץ `firebase init`, בחר **Use an existing project**, וקשר אותו לפרויקט האירופאי החדש.
+3.  בהגדרות, בחר את השירותים: **Firestore**, **Functions**, ו-**Hosting**.
+4.  ענה על שאלות האתחול, אך **אל תדרוס** קבצים קיימים כמו `index.html`.
+5.  התקן את תלויות ה-Functions באמצעות ניווט לתיקיית `functions` (`cd functions`) והרצת `npm install`.
 
-Within the project you created:
+## שלב 5: תצורת קבצים מקומית
 
-### 1. Authentication
-* In the side menu, go to `Authentication`.
-* Go to the `Sign-in method` tab and enable the **Anonymous** authentication method.
+1.  **`firebase-config.js`**: בפרויקט ב-Firebase, גש להגדרות (`Project settings`), הוסף Web App, והעתק את אובייקט `firebaseConfig` לקובץ המקומי.
+2.  **`firebase.json`**: ודא שהמיקום תחת `firestore` הוא `europe-west1` ושהגדרת `rewrites` תקינה תחת `hosting`.
+3.  **`config.json` (שלב חדש וחשוב):**
+    * בתיקיית `public`, ודא שקיים קובץ בשם `config.json`.
+    * ודא שהמבנה שלו תקין ושהשדה `studentAppUrl` מכיל את הכתובת **הנכונה** לאפליקציית התלמיד **בפרויקט שלך**.
+    * **דוגמה:**
+        ```json
+        {
+          "studentAppUrl": "[https://your-project-id.web.app/student-app.html](https://your-project-id.web.app/student-app.html)",
+          "games": [
+            {
+              "name": "Kahoot",
+              "description": "חידון אינטראקטיבי",
+              "icon": "🎯",
+              "url": "[https://kahoot.it](https://kahoot.it)"
+            }
+          ]
+        }
+        ```
 
-### 2. Firestore Database
-* Go to `Firestore Database` and click `Create database`.
-* Choose to start in **Production mode**.
-* Ensure the location selection is **identical** to what you chose in step 1 (e.g., `europe-west1`).
-* After creating the database, go to the **Rules** tab, delete the existing content and paste the security rules from your project.
+## שלב 6: הגדרת סודות (API Keys)
 
-### 3. Secret Manager API
-* Ensure this API is enabled for your project in Google Cloud Console. It's usually enabled automatically with Cloud Functions.
+בטרמינל (בתיקייה הראשית), הרץ את שלוש הפקודות הבאות, והזן את המפתחות המתאימים:
+* `firebase functions:secrets:set GEMINI_API_KEY`
+* `firebase functions:secrets:set CLAUDE_API_KEY`
+* `firebase functions:secrets:set OPENAI_API_KEY`
 
----
+## שלב 7: פריסה ראשונית
 
-## Step 3: Setting Up External API Keys
-
-1. Create API keys for the services you'll use (Gemini, Claude, ChatGPT, etc.) through their official platforms.
-2. Save the keys in a secure and accessible place for the next step.
-
----
-
-## Step 4: Setting Up the Local Project
-
-### 1. Initialize Directory
-* Create a new directory for the project, copy the source files to it, and open a terminal in it.
-
-### 2. Link to Firebase Project
-* Run the command:
-    ```bash
-    firebase init
-    ```
-* Choose **Use an existing project** and link it to the new project you created in Firebase.
-* Select the following services: **Firestore**, **Functions**, and **Hosting**.
-* Answer the initialization questions, but **avoid overwriting existing files** if asked (like `index.html` or `firestore.rules`).
-
-### 3. Install Dependencies
-* Navigate to the functions directory using `cd functions` and run `npm install` to install all required server-side dependencies.
-
----
-
-## Step 5: Local File Configuration
-
-### 1. Setting Deployment Location (Functions)
-* Open the `functions/index.js` file.
-* Ensure the variable at the top of the file matches the location you chose. For example: `const DEPLOY_REGION = "europe-west1";`.
-
-### 2. Creating Firebase Configuration File for Application (Frontend)
-* **Recommended:** Run the following command in terminal (in the root directory) to automatically create the configuration file:
-    ```bash
-    firebase apps:sdkconfig WEB --out public/firebase-config.js
-    ```
-    This command generates the exact `firebase-config.js` file for your project.
-
-### 3. Application Configuration (`config.json`)
-* Ensure there's a file named `config.json` in the `public` directory.
-* Ensure its structure is valid and the `studentAppUrl` field contains the complete address to the student application **in your project**.
-
----
-
-## Step 6: Setting Up Secrets (API Keys)
-
-This is the secure way to manage your API keys. Run the following commands in terminal (from the root directory), and enter each key when prompted:
-
-```bash
-firebase functions:secrets:set GEMINI_API_KEY
-firebase functions:secrets:set CLAUDE_API_KEY
-firebase functions:secrets:set OPENAI_API_KEY
-```
-
-**Note:** You can add more API keys as needed for your project.
-
----
-
-## Step 7: Deployment (Deploy)
-
-### 1. (Optional) Build Step
-If your project includes a build step (e.g., a script like `build.py` or `npm run build` that minifies files), run it now.
-
-### 2. Final Deployment
-To deploy the entire system (Hosting, Functions, Rules), run the command:
-
+כדי לפרוס את כל המערכת ולקשר את הפונקציות לסודות, הרץ:
 ```bash
 firebase deploy
-```
-
-At the end of the process, you'll receive a new **Hosting URL**. This is the address of your new, live, and independent system.
-
----
-
-## Using Scripts for Automation
-
-In addition to the manual process, the project includes scripts that allow you to perform some or all of the operations automatically.
-
-### Build Script (build.py)
-
-This script is designed to prepare the Frontend files for deployment in a Production environment.
-
-**What does it do?**
-- Deletes the old BUILD directory if it exists and creates it anew.
-- Goes through all files in the public directory.
-- Minifies `.js` files (using Terser), `.css` and `.html` files (using minify).
-- Copies other files (like `config.json` and `firebase-config.js`) as-is to the BUILD directory.
-
-**When to use?**
-Run the script before deploying the project to upload a minified and efficient version to the server.
-
-**How to use?**
-1. Ensure you've installed the required dependencies shown at the top of the script (Terser, Minify).
-2. Run the command:
-   ```bash
-   python build.py
-   ```
-
-**Important:** After running, update the `firebase.json` file so the Hosting directory is BUILD instead of public:
-
-```json
-"hosting": {
-  "public": "BUILD",
-  "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-  "rewrites": [{"source": "**", "destination": "/index.html"}]
-}
-```
-
-3. Run `firebase deploy`.
-
-### Automatic Installation and Deployment Script (deploy.py or install.py)
-
-This script is a powerful tool that enables full automation of almost the entire manual process described in this guide. It's interactive and guides the user step by step.
-
-**What does it do?**
-- Checks system dependencies (node, npm, firebase).
-- Guides the user in creating a new Firebase project through the terminal.
-- Automatically enables required cloud services (`gcloud services enable`).
-- Sets up local configuration files (`firebase.json`, `.firebaserc`, `config.json`).
-- Runs dependency installation for functions (`npm install`).
-- Securely guides API key entry and saves them as Secrets.
-- Requests final approval before performing a general `firebase deploy`.
-
-**Simulation Mode:**
-By default, the script runs in simulation mode. It only prints the commands it would run without actually executing them. This allows you to see what's about to happen before making real changes.
-
-**How to use?**
-
-For running in simulation mode (recommended for first time):
-```bash
-python deploy.py
-```
-
-For running in "live" mode that performs all operations:
-```bash
-python deploy.py --live
-```
-
-**Note:** The automatic installation script is an advanced tool. Use it carefully, especially in live mode, as it makes changes to your cloud project.
-
----
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Region Mismatch**: Ensure all Firebase services use the same region.
-2. **Billing Issues**: Make sure your project is on the Blaze plan.
-3. **API Key Problems**: Verify all API keys are correctly set using Firebase secrets.
-4. **Build Errors**: Check that all dependencies are installed in the functions directory.
-
-### Support
-
-For additional support, refer to the [Firebase Documentation](https://firebase.google.com/docs) or check the project's issue tracker.
-
----
-
-## Security Considerations
-
-- Always use Firebase secrets for API keys, never hardcode them.
-- Regularly review and update your Firestore security rules.
-- Monitor your Firebase usage to avoid unexpected charges.
-- Keep your Firebase CLI and project dependencies updated.
-
----
-
-## Next Steps
-
-After successful deployment:
-1. Test all system functionality
-2. Set up monitoring and logging
-3. Configure backup procedures
-4. Plan for scaling and maintenance
-
-This completes the installation and deployment process for your Interactive Classroom System.
+</div>
 
 ================================================================================
 END OF MCP COLLECTED FILES

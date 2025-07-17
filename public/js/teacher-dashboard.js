@@ -26,6 +26,7 @@ class TeacherDashboard {
         // 🔧 English locale fix - set locale
         this.locale = 'en-US';
         this.rtlSupport = false;
+        this.isContentManagerInitialized = false;
     }
 
     // Debugging utility with English support
@@ -63,12 +64,8 @@ class TeacherDashboard {
             console.log('🔍 SDK created:', !!this.sdk);
             console.log('🔍 SDK toggleAI method:', !!this.sdk.toggleAI);
             
-            const user = await this.sdk.loginAnonymously();
-            this.debugLog("👑 Teacher logged in successfully", { uid: user.uid });
-
-            await this.sdk.init('teacher-dashboard', user);
-            this.debugLog(`✅ Teacher dashboard initialized with room: ${this.sdk.getRoomCode()}`);
-
+            await this.handleSuccessfulLogin(this.sdk.auth.currentUser);
+            
             // וודא שה-SDK מוכן לפני יצירת AI
             console.log('🔍 Final SDK check before AI init:');
             console.log('- SDK exists:', !!this.sdk);
@@ -503,13 +500,21 @@ class TeacherDashboard {
     updateConnectionStatus(isConnected) {
         const statusDiv = document.getElementById('connectionStatus');
         if (!statusDiv) return;
+
+        // Remove old classes and stop animation
+        statusDiv.className = '';
+        statusDiv.style.animation = 'none';
+
         if (isConnected) {
-            statusDiv.textContent = '🟢 Connected to Firebase';
-            statusDiv.className = 'connection-status connected';
+            statusDiv.classList.add('connected');
+            statusDiv.setAttribute('title', 'Connected to Firebase');
         } else {
-            statusDiv.textContent = '🔴 Not Connected';
-            statusDiv.className = 'connection-status disconnected';
+            statusDiv.classList.add('disconnected');
+            statusDiv.setAttribute('title', 'Not Connected');
         }
+        // Force restart animation for visual feedback
+        void statusDiv.offsetWidth;
+        statusDiv.style.animation = 'pulse 2s infinite';
     }
 
     addActivity(activityText) {
@@ -811,6 +816,22 @@ class TeacherDashboard {
                 this.resetStudentScreens();
             }
         });
+
+        document.getElementById('reset-screens-action')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (confirm('Are you sure you want to reset all student screens?')) {
+                this.resetStudentScreens();
+            }
+        });
+
+        // Logout button
+        document.getElementById('logout-action-btn')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.logout();
+        });
+
+        // === הוספת קריאה ל-initContentManager ב-setupEventListeners ===
+        this.setupContentManager();
     }
 
     openPrivateMessageModal(student) {
@@ -908,35 +929,29 @@ class TeacherDashboard {
         this.populateGamesList();
     }
 
+    // === החלפת populateGamesList בפונקציה חדשה ===
     populateGamesList() {
         const container = document.getElementById('game-list-container');
         if (!container) return;
 
-        const games = this.config?.games || []; // 🎯 Change here
-        container.innerHTML = ''; // Clear previous content
+        const content = this.personalContent || [];
+        container.innerHTML = '';
 
-        if (games.length === 0) {
-            container.innerHTML = '<p>No games found in config.json</p>';
+        if (content.length === 0) {
+            container.innerHTML = '<p style="padding: 15px; text-align: center;">You haven\'t added any personal content yet. Go to Tools > Manage Content & AI to add some.</p>';
             return;
         }
 
-        games.forEach(game => {
-            const gameElement = document.createElement('a');
-            gameElement.href = '#';
-            gameElement.className = 'dropdown-item'; // Reuse existing CSS
-            gameElement.onclick = (e) => {
+        content.forEach(item => {
+            const element = document.createElement('a');
+            element.href = '#';
+            element.className = 'dropdown-item';
+            element.onclick = (e) => {
                 e.preventDefault();
-                this.sendSelectedGame(game.url);
+                this.sendSelectedGame(item.url);
             };
-
-            gameElement.innerHTML = `
-                <span class="dropdown-icon">${game.icon || '🔗'}</span>
-                <div class="dropdown-content">
-                    <div class="dropdown-title">${game.name}</div>
-                    <div class="dropdown-desc">${game.description}</div>
-                </div>
-            `;
-            container.appendChild(gameElement);
+            element.innerHTML = `<span class="dropdown-icon">${item.icon || '🔗'}</span><div class="dropdown-content"><div class="dropdown-title">${item.title}</div><div class="dropdown-desc">${item.description}</div></div>`;
+            container.appendChild(element);
         });
     }
 
@@ -1239,6 +1254,396 @@ class TeacherDashboard {
             this.addActivity('⏹️ All student screens have been cleared.');
         } catch (error) {
             console.error("Error resetting student screens:", error);
+        }
+    }
+
+    // =======================================================
+    // ========= CONTENT & PROMPT MANAGEMENT LOGIC ===========
+    // =======================================================
+
+    async loadPersonalData() {
+        if (!this.sdk || !this.sdk.auth.currentUser) return;
+        const teacherUid = this.sdk.auth.currentUser.uid;
+
+        // Load personal content
+        try {
+            const contentRef = this.sdk.db.collection('teachers').doc(teacherUid).collection('personal_links');
+            const contentSnapshot = await contentRef.get();
+            this.personalContent = contentSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        } catch (error) {
+            console.error("Error loading personal content:", error);
+            this.personalContent = [];
+        }
+
+        // Load personal prompts
+        try {
+            const promptsRef = this.sdk.db.collection('teachers').doc(teacherUid).collection('personal_prompts');
+            const promptsSnapshot = await promptsRef.get();
+            this.personalPrompts = promptsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        } catch (error) {
+            console.error("Error loading personal prompts:", error);
+            this.personalPrompts = [];
+        }
+
+        this.debugLog('✅ Personal content and prompts loaded', {
+            content: this.personalContent,
+            prompts: this.personalPrompts
+        });
+    }
+
+    // === Gemini approach for modal event listeners ===
+    setupContentManager() {
+        const openBtn = document.getElementById('open-content-manager-btn');
+        if (openBtn) {
+            openBtn.addEventListener('click', () => {
+                const modal = document.getElementById('content-manager-modal');
+                if (modal) {
+                    // Initialize listeners inside the modal only ONCE, the first time it's opened.
+                    if (!this.isContentManagerInitialized) {
+                        this.initModalEventListeners(modal);
+                        this.isContentManagerInitialized = true;
+                    }
+                    this.renderPersonalContentList();
+                    this.renderPersonalPromptsList();
+                    this.populateActivePromptSelector();
+                    modal.classList.add('visible');
+                }
+            });
+        } else {
+            // This log helps if the button itself is missing for some reason.
+            console.error("Could not find the 'open-content-manager-btn'.");
+        }
+    }
+
+    initModalEventListeners(modal) {
+        // Tab switching logic
+        modal.querySelectorAll('.tab-link').forEach(button => {
+            button.addEventListener('click', () => {
+                modal.querySelectorAll('.tab-link, .tab-content').forEach(el => el.classList.remove('active'));
+                button.classList.add('active');
+                document.getElementById(button.dataset.tab).classList.add('active');
+            });
+        });
+
+        // Close modal button
+        modal.querySelector('.modal-close').addEventListener('click', () => modal.classList.remove('visible'));
+
+        // Content Management Forms & Buttons
+        document.getElementById('personal-content-form').addEventListener('submit', this.handleSavePersonalContent.bind(this));
+        document.getElementById('cancel-content-edit').addEventListener('click', this.resetContentForm.bind(this));
+
+        // Prompt Management Forms & Buttons
+        document.getElementById('personal-prompt-form').addEventListener('submit', this.handleSavePersonalPrompt.bind(this));
+        document.getElementById('cancel-prompt-edit').addEventListener('click', this.resetPromptForm.bind(this));
+        document.getElementById('generate-prompt-suggestion-btn').addEventListener('click', this.generatePromptSuggestion.bind(this));
+        document.getElementById('active-prompt-selector').addEventListener('change', this.setActivePrompt.bind(this));
+    }
+
+    renderPersonalContentList() {
+        const list = document.getElementById('personal-content-list');
+        if (!list) return;
+        list.innerHTML = '';
+        (this.personalContent || []).forEach(item => {
+            const el = document.createElement('div');
+            el.className = 'list-item';
+            el.innerHTML = `
+                <span class="list-item-icon">${item.icon}</span>
+                <div class="list-item-details">
+                    <div class="list-item-title">${item.title}</div>
+                    <div class="list-item-desc">${item.description}</div>
+                </div>
+                <div class="list-item-actions">
+                    <button class="edit-btn" data-id="${item.id}">✏️</button>
+                    <button class="delete-btn" data-id="${item.id}">🗑️</button>
+                </div>
+            `;
+            el.querySelector('.edit-btn').addEventListener('click', () => this.editContentItem(item.id));
+            el.querySelector('.delete-btn').addEventListener('click', () => this.deleteContentItem(item.id));
+            list.appendChild(el);
+        });
+    }
+
+    renderPersonalPromptsList() {
+        const list = document.getElementById('personal-prompts-list');
+        if (!list) return;
+        list.innerHTML = '';
+        (this.personalPrompts || []).forEach(prompt => {
+            const el = document.createElement('div');
+            el.className = 'list-item';
+            el.innerHTML = `
+                <span class="list-item-icon">🎯</span>
+                <div class="list-item-details">
+                    <div class="list-item-title">${prompt.title}</div>
+                    <div class="list-item-desc">${prompt.prompt}</div>
+                </div>
+                <div class="list-item-actions">
+                    <button class="edit-btn" data-id="${prompt.id}">✏️</button>
+                    <button class="delete-btn" data-id="${prompt.id}">🗑️</button>
+                </div>
+            `;
+            el.querySelector('.edit-btn').addEventListener('click', () => this.editPromptItem(prompt.id));
+            el.querySelector('.delete-btn').addEventListener('click', () => this.deletePromptItem(prompt.id));
+            list.appendChild(el);
+        });
+    }
+
+    populateActivePromptSelector() {
+        const selector = document.getElementById('active-prompt-selector');
+        if (!selector) return;
+        selector.innerHTML = '<option value="general">General (Open Context)</option>';
+        (this.personalPrompts || []).forEach(prompt => {
+            const option = document.createElement('option');
+            option.value = prompt.id;
+            option.textContent = prompt.title;
+            selector.appendChild(option);
+        });
+        // You might want to get the active prompt from room settings and set it here
+    }
+
+    async handleSavePersonalContent(e) {
+        e.preventDefault();
+        const teacherUid = this.sdk.auth.currentUser.uid;
+        const form = e.target;
+        const contentId = form.querySelector('#content-id').value;
+        const data = {
+            title: form.querySelector('#content-title').value,
+            description: form.querySelector('#content-desc').value,
+            icon: form.querySelector('#content-icon').value,
+            url: form.querySelector('#content-url').value,
+        };
+
+        const collectionRef = this.sdk.db.collection('teachers').doc(teacherUid).collection('personal_links');
+        if (contentId) { // Update
+            await collectionRef.doc(contentId).update(data);
+        } else { // Create
+            await collectionRef.add(data);
+        }
+        await this.loadPersonalData();
+        this.renderPersonalContentList();
+        this.resetContentForm();
+    }
+
+    editContentItem(id) {
+        const item = this.personalContent.find(c => c.id === id);
+        const form = document.getElementById('personal-content-form');
+        if (!form) return;
+        form.querySelector('#content-id').value = item.id;
+        form.querySelector('#content-title').value = item.title;
+        form.querySelector('#content-desc').value = item.description;
+        form.querySelector('#content-icon').value = item.icon;
+        form.querySelector('#content-url').value = item.url;
+        const cancelBtn = document.getElementById('cancel-content-edit');
+        if (cancelBtn) cancelBtn.style.display = 'inline-block';
+    }
+
+    resetContentForm() {
+        const form = document.getElementById('personal-content-form');
+        if (form) form.reset();
+        const idInput = document.getElementById('content-id');
+        if (idInput) idInput.value = '';
+        const cancelBtn = document.getElementById('cancel-content-edit');
+        if (cancelBtn) cancelBtn.style.display = 'none';
+    }
+
+    async deleteContentItem(id) {
+        if (!confirm('Are you sure you want to delete this content?')) return;
+        const teacherUid = this.sdk.auth.currentUser.uid;
+        await this.sdk.db.collection('teachers').doc(teacherUid).collection('personal_links').doc(id).delete();
+        await this.loadPersonalData();
+        this.renderPersonalContentList();
+    }
+
+    async generatePromptSuggestion() {
+        const subject = document.getElementById('prompt-subject-selector')?.value;
+        const keywords = document.getElementById('prompt-keywords-input')?.value;
+
+        if (!subject) {
+            alert('Please select a main subject first.');
+            return;
+        }
+
+        let goalDescription = `The main subject of the lesson is '${subject}'.`;
+        if (keywords) {
+            goalDescription += ` The specific topics or keywords are: '${keywords}'.`;
+        }
+
+        const metaPrompt = `You are an expert in pedagogical prompt engineering. A teacher described their lesson goal as follows: "${goalDescription}". Based on this, write an effective system prompt in English. The prompt should instruct an AI to act as a helpful teaching assistant, answer only questions directly related to the specified subject and keywords, and politely decline off-topic questions by reminding the student to focus on the lesson.`;
+
+        this.addActivity('🤖 Asking AI for a prompt suggestion...');
+        const result = await this.sdk.sendAIMessage(metaPrompt, 'en', true); // true to bypass context
+        if (result && result.text) {
+            const promptContent = document.getElementById('prompt-content');
+            if (promptContent) promptContent.value = result.text;
+            // Automatically generate a title
+            const title = subject + (keywords ? `: ${keywords}` : '');
+            const promptTitle = document.getElementById('prompt-title');
+            if (promptTitle) promptTitle.value = title;
+        } else {
+            alert('The AI could not generate a suggestion. Please try again.');
+        }
+    }
+
+    async handleSavePersonalPrompt(e) {
+        e.preventDefault();
+        const teacherUid = this.sdk.auth.currentUser.uid;
+        const form = e.target;
+        const promptId = form.querySelector('#prompt-id').value;
+        const data = {
+            title: form.querySelector('#prompt-title').value,
+            prompt: form.querySelector('#prompt-content').value,
+        };
+
+        const collectionRef = this.sdk.db.collection('teachers').doc(teacherUid).collection('personal_prompts');
+        if (promptId) { // Update
+            await collectionRef.doc(promptId).update(data);
+        } else { // Create
+            await collectionRef.add(data);
+        }
+        await this.loadPersonalData();
+        this.renderPersonalPromptsList();
+        this.populateActivePromptSelector();
+        this.resetPromptForm();
+    }
+
+    editPromptItem(id) {
+        const item = this.personalPrompts.find(p => p.id === id);
+        const form = document.getElementById('personal-prompt-form');
+        if (!form) return;
+        form.querySelector('#prompt-id').value = item.id;
+        form.querySelector('#prompt-title').value = item.title;
+        form.querySelector('#prompt-content').value = item.prompt;
+        const cancelBtn = document.getElementById('cancel-prompt-edit');
+        if (cancelBtn) cancelBtn.style.display = 'inline-block';
+    }
+
+    resetPromptForm() {
+        const form = document.getElementById('personal-prompt-form');
+        if (form) form.reset();
+        const idInput = document.getElementById('prompt-id');
+        if (idInput) idInput.value = '';
+        const cancelBtn = document.getElementById('cancel-prompt-edit');
+        if (cancelBtn) cancelBtn.style.display = 'none';
+        const promptGoalInput = document.getElementById('prompt-goal-input');
+        if (promptGoalInput) promptGoalInput.value = '';
+    }
+
+    async deletePromptItem(id) {
+        if (!confirm('Are you sure you want to delete this prompt?')) return;
+        const teacherUid = this.sdk.auth.currentUser.uid;
+        await this.sdk.db.collection('teachers').doc(teacherUid).collection('personal_prompts').doc(id).delete();
+        await this.loadPersonalData();
+        this.renderPersonalPromptsList();
+        this.populateActivePromptSelector();
+    }
+
+    async setActivePrompt(e) {
+        const promptId = e.target.value;
+        const roomRef = this.sdk.db.collection('rooms').doc(this.sdk.getRoomCode());
+        await roomRef.update({ 'settings.active_prompt_id': promptId === 'general' ? null : promptId });
+        this.addActivity(`✅ AI context set to: ${e.target.options[e.target.selectedIndex].text}`);
+    }
+
+    // ========== AUTHENTICATION METHODS ==========
+
+    async handleSuccessfulLogin(user) {
+        console.log("🚀 Handling successful login...");
+        this.sdk = new ClassroomSDK();
+
+        // 1. Get or create teacher profile
+        await this.getOrCreateTeacherProfile(user);
+
+        // 2. Initialize SDK
+        await this.sdk.init('teacher-dashboard', user);
+        this.debugLog(`✅ Teacher dashboard initialized with room: ${this.sdk.getRoomCode()}`);
+
+        // 3. Setup UI and Listeners
+        this.sdk.createAIInterface();
+        this.initializeTeacherAI();
+        this.sdk.listenForStudents(this.updateStudentsList.bind(this));
+        this.sdk.listenForMessages(this.addMessage.bind(this));
+        this.sdk.listenForRoomUpdates(this.handleRoomUpdates.bind(this)); // Use a dedicated handler
+
+        this.updateConnectionStatus(true);
+        this.setupEventListeners(); // Re-run to attach listeners to new elements
+        this.updateRoomDisplay();
+
+        // 4. טען תכנים והנחיות אישיות
+        await this.loadPersonalData();
+
+        // 5. Show the main app UI
+        document.querySelector('.header').style.display = 'block';
+        document.querySelector('.main-content').style.display = 'flex';
+        document.getElementById('login-container').style.display = 'none';
+        document.getElementById('loading-overlay').classList.add('hidden');
+        console.log("🎉 Dashboard is ready and visible.");
+    }
+
+    async getOrCreateTeacherProfile(user) {
+        const teacherRef = this.sdk.db.collection('teachers').doc(user.uid);
+        const doc = await teacherRef.get();
+
+        if (!doc.exists) {
+            console.log(`Creating new teacher profile for: ${user.displayName}`);
+            await teacherRef.set({
+                displayName: user.displayName,
+                email: user.email,
+                photoURL: user.photoURL,
+                created_at: firebase.firestore.FieldValue.serverTimestamp(),
+                last_login: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        } else {
+            console.log(`Teacher ${user.displayName} exists. Updating last login.`);
+            await teacherRef.update({
+                last_login: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
+    }
+
+    showLoginScreen() {
+        document.querySelector('.header').style.display = 'none';
+        document.querySelector('.main-content').style.display = 'none';
+        document.getElementById('loading-overlay').classList.add('hidden');
+        const loginContainer = document.getElementById('login-container');
+        loginContainer.style.display = 'flex';
+
+        document.getElementById('google-signin-btn').onclick = () => this.signInWithProvider('google');
+        document.getElementById('microsoft-signin-btn').onclick = () => this.signInWithProvider('microsoft');
+    }
+
+    async signInWithProvider(providerName) {
+        let provider;
+        if (providerName === 'google') {
+            provider = new firebase.auth.GoogleAuthProvider();
+        } else if (providerName === 'microsoft') {
+            provider = new firebase.auth.OAuthProvider('microsoft.com');
+        } else {
+            return;
+        }
+
+        try {
+            await firebase.auth().signInWithPopup(provider);
+        } catch (error) {
+            console.error(`${providerName} Sign-In Error:`, error);
+            alert(`Failed to sign in with ${providerName}.`);
+        }
+    }
+
+    logout() {
+        firebase.auth().signOut();
+    }
+
+    // Helper to prevent code duplication
+    handleRoomUpdates(roomData) {
+        if (!roomData || !roomData.settings) return;
+
+        if (roomData.settings.currentPoll) {
+            this.displayPollResults(roomData.settings.currentPoll);
+        }
+
+        const aiIsActiveInDB = roomData.settings.ai_active === true;
+        if (this.isAiActive !== aiIsActiveInDB) {
+            this.isAiActive = aiIsActiveInDB;
+            this.updateAIButton();
         }
     }
 }

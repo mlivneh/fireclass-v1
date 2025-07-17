@@ -1,6 +1,6 @@
 =================================================================
 FireClass System - Complete Project Files
-Created: 2025-07-10 21:13:30
+Created: 2025-07-17 18:24:40
 Source Directory: public
 =================================================================
 
@@ -71,6 +71,29 @@ var firebaseConfig = {
 
 
 =================================================================
+FILE: i18n-config.json
+FULL PATH: public\i18n-config.json
+=================================================================
+
+{
+  "defaultLanguage": "en",
+  "supportedLanguages": [
+    "en",
+    "he",
+    "ar",
+    "es",
+    "fr"
+  ],
+  "fallbackLanguage": "en",
+  "autoDetect": true,
+  "rtlLanguages": [
+    "he",
+    "ar"
+  ]
+}
+
+
+=================================================================
 FILE: index.html
 FULL PATH: public\index.html
 =================================================================
@@ -97,201 +120,145 @@ FULL PATH: public\index.html
     <div id="loading-overlay">
         <div class="spinner"></div>
     </div>
-    <!-- Header with Professional Navigation -->
-    <header class="header">
-        <div class="nav-container">
+    <!-- ==================== NEW LOGIN SCREEN START ==================== -->
+<div id="login-container" class="login-overlay" style="display: none;">
+    <div class="login-box">
+        <div class="logo">
+            <span class="logo-icon">⚙️</span>
+            <span class="logo-text">fireClass Control</span>
+        </div>
+        <p>Welcome, please sign in to continue.</p>
+
+        <div class="signin-options-title">Signin Options</div>
+
+        <div class="signin-options">
+            <button id="google-signin-btn" class="signin-btn" title="Sign in with Google">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google Logo">
+            </button>
+            <button id="microsoft-signin-btn" class="signin-btn" title="Sign in with Microsoft">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg" alt="Microsoft Logo">
+            </button>
+        </div>
+    </div>
+</div>
+<!-- ===================== NEW LOGIN SCREEN END ===================== -->
+
+    <!-- ==================== NEW HEADER START ==================== -->
+<header class="header">
+    <div class="nav-container">
+        <!-- Left Side: Logo and Room Code -->
+        <div class="header-left">
             <div class="logo">
                 <span class="logo-icon">⚙️</span>
                 <span class="logo-text">fireClass Control</span>
             </div>
-            
             <div id="header-room-display" class="header-room-display">
-                <span class="room-code-label">Room Code:</span>
+                <span class="room-code-label">Room:</span>
                 <span id="header-room-code" class="room-code-value">...</span>
-                <img id="qr-code-image" class="qr-code" alt="QR Code for Classroom" title="Click to copy student link"/>
-            </div>
-            
-            <nav>
-                <ul class="nav-menu">
-                    <!-- Quick Actions -->
-                    <li class="nav-item">
-                        <a href="#" class="nav-link">
-                            <span class="nav-icon">⚡</span>
-                            <span>Quick Actions</span>
-                        </a>
-                        <div class="dropdown">
-                            <div class="dropdown-header">Quick actions for lesson management</div>
-                            <a href="#" class="dropdown-item success-item" onclick="sendQuickMessage('Let\'s start the lesson!')">
-                                <span class="dropdown-icon">🎓</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">Start Lesson</div>
-                                    <div class="dropdown-desc">Send message to all students</div>
-                                </div>
-                            </a>
-                            <a href="#" class="dropdown-item warning-item" onclick="sendQuickMessage('Time for a break! Come back in 5 minutes.')">
-                                <span class="dropdown-icon">☕</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">Break Time</div>
-                                    <div class="dropdown-desc">Announce break time</div>
-                                </div>
-                            </a>
-                            <a href="#" class="dropdown-item" onclick="sendQuickMessage('The lesson has ended. Well done everyone!')">
-                                <span class="dropdown-icon">✅</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">End Lesson</div>
-                                    <div class="dropdown-desc">Finish the lesson</div>
-                                </div>
-                            </a>
-                            <a href="#" class="dropdown-item danger-item" onclick="resetClassroomData()">
-                                <span class="dropdown-icon">🔄</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">New Lesson</div>
-                                    <div class="dropdown-desc">Clear all lesson data</div>
-                                </div>
-                            </a>
-                        </div>
-                    </li>
-
-                    <!-- Games and Content -->
-                    <li class="nav-item">
-                        <a href="#" class="nav-link" onclick="window.teacherDashboard.openContentModal()">
-                            <span class="nav-icon">🎮</span>
-                            <span>Games & Content</span>
-                        </a>
-                    </li>
-
-                    <!-- AI Management -->
-                    <li class="nav-item">
-                        <a href="#" class="nav-link" id="aiMenuLink">
-                            <span class="nav-icon">🤖</span>
-                            <span>AI Management</span>
-                        </a>
-                        <div class="dropdown">
-                            <div class="dropdown-header">AI Assistant settings for students</div>
-                            
-                            <a href="#" class="dropdown-item" id="toggleAI" onclick="console.log('🟢 TRACE: AI button clicked'); window.teacherDashboard.toggleAIForClass()">
-                                <span class="dropdown-icon" id="aiStatusIcon">🔴</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title" id="aiStatusText">AI disabled for students</div>
-                                    <div class="dropdown-desc">Click to enable</div>
-                                </div>
-                            </a>
-                            
-                            <div style="padding: 10px 20px; border-top: 1px solid #f0f2f5; background: #f8f9fa;">
-                                <strong style="font-size: 14px; color: #555;">🎯 Select model for class:</strong>
-                                <div style="font-size: 12px; color: #777; margin-top: 2px;">Current model: <span class="current-ai-model">ChatGPT</span></div>
-                            </div>
-                            
-                            <a href="#" class="dropdown-item ai-model-btn" data-model="chatgpt" onclick="window.teacherDashboard.switchAIModel('chatgpt')">
-                                <span class="dropdown-icon">🤖</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">ChatGPT</div>
-                                    <div class="dropdown-desc">Advanced model from OpenAI</div>
-                                </div>
-                            </a>
-                            
-                            <a href="#" class="dropdown-item ai-model-btn" data-model="claude" onclick="window.teacherDashboard.switchAIModel('claude')">
-                                <span class="dropdown-icon">🧠</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">Claude</div>
-                                    <div class="dropdown-desc">Smart model from Anthropic</div>
-                                </div>
-                            </a>
-                            
-                            <a href="#" class="dropdown-item ai-model-btn" data-model="gemini" onclick="window.teacherDashboard.switchAIModel('gemini')">
-                                <span class="dropdown-icon">✨</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">Gemini</div>
-                                    <div class="dropdown-desc">Google's model</div>
-                                </div>
-                            </a>
-                        </div>
-                    </li>
-
-                    <!-- Tools -->
-                    <li class="nav-item">
-                        <a href="#" class="nav-link">
-                            <span class="nav-icon">🔧</span>
-                            <span>Tools</span>
-                        </a>
-                        <div class="dropdown">
-                            <div class="dropdown-header">Utilities and debugging tools</div>
-                            <a href="#" class="dropdown-item" onclick="toggleDebug()">
-                                <span class="dropdown-icon">🐛</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">Debug Console</div>
-                                    <div class="dropdown-desc">Show technical information</div>
-                                </div>
-                            </a>
-                            <a href="#" class="dropdown-item" onclick="exportData()">
-                                <span class="dropdown-icon">📊</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">Export Data</div>
-                                    <div class="dropdown-desc">Save student list and messages</div>
-                                </div>
-                            </a>
-                        </div>
-                    </li>
-
-                    <!-- Polls -->
-                    <li class="nav-item">
-                        <a href="#" class="nav-link">
-                            <span class="nav-icon">📊</span>
-                            <span>Polls</span>
-                        </a>
-                        <div class="dropdown">
-                            <a href="#" class="dropdown-item" onclick="window.teacherDashboard.openPollCreationModal()">
-                                <span class="dropdown-icon">➕</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">Start New Poll</div>
-                                    <div class="dropdown-desc">Send quick question to class</div>
-                                </div>
-                            </a>
-                        </div>
-                    </li>
-
-                    <!-- Reports -->
-                    <li class="nav-item">
-                        <a href="#" class="nav-link">
-                            <span class="nav-icon">📊</span>
-                            <span>Reports</span>
-                        </a>
-                        <div class="dropdown">
-                            <div class="dropdown-header">Reports and analytics (FFU)</div>
-                            <a href="#" class="dropdown-item" onclick="generateLessonSummary()">
-                                <span class="dropdown-icon">📋</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">Lesson Summary</div>  
-                                    <div class="dropdown-desc">Comprehensive AI report of entire lesson</div>
-                                </div>
-                            </a>
-                            <a href="#" class="dropdown-item" onclick="exportLessonData()">
-                                <span class="dropdown-icon">💾</span>
-                                <div class="dropdown-content">
-                                    <div class="dropdown-title">Export Lesson Data</div>
-                                    <div class="dropdown-desc">Save all data to file</div>
-                                </div>
-                            </a>
-                        </div>
-                    </li>
-                </ul>
-            </nav>
-
-            <!-- Add this button right after the <nav> element -->
-            <button id="resetScreensBtn" title="Stop current activity and clear all student screens" style="background: #e74c3c; color: white; border: none; padding: 8px 16px; border-radius: 20px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 18px;">⏹️</span>
-                <span>Clear Screens</span>
-            </button>
-
-            <div class="status-indicator" id="connectionStatus">
-                <div class="status-dot"></div>
-                <span>Connecting...</span>
+                <img id="qr-code-image" class="qr-code" alt="QR Code" title="Click to copy student link"/>
             </div>
         </div>
-    </header>
+
+        <!-- Center: Navigation Menu -->
+        <nav class="header-center">
+            <ul class="nav-menu">
+                <!-- Quick Actions -->
+                <li class="nav-item">
+                    <a href="#" class="nav-link"><span class="nav-icon">⚡</span><span>Quick Actions</span></a>
+                    <div class="dropdown">
+                        <div class="dropdown-header">Quick actions for lesson management</div>
+                        <a href="#" class="dropdown-item success-item" onclick="sendQuickMessage('Let\'s start the lesson!')"><span class="dropdown-icon">🎓</span><div class="dropdown-content"><div class="dropdown-title">Start Lesson</div><div class="dropdown-desc">Send message to all students</div></div></a>
+                        <a href="#" class="dropdown-item warning-item" onclick="sendQuickMessage('Time for a break! Come back in 5 minutes.')"><span class="dropdown-icon">☕</span><div class="dropdown-content"><div class="dropdown-title">Break Time</div><div class="dropdown-desc">Announce break time</div></div></a>
+                        <a href="#" class="dropdown-item" onclick="sendQuickMessage('The lesson has ended. Well done everyone!')"><span class="dropdown-icon">✅</span><div class="dropdown-content"><div class="dropdown-title">End Lesson</div><div class="dropdown-desc">Finish the lesson</div></div></a>
+                        <a href="#" class="dropdown-item danger-item" onclick="resetClassroomData()"><span class="dropdown-icon">🔄</span><div class="dropdown-content"><div class="dropdown-title">New Lesson</div><div class="dropdown-desc">Clear all lesson data</div></div></a>
+                    </div>
+                </li>
+                <!-- Games and Content -->
+                <li class="nav-item">
+                    <a href="#" class="nav-link" onclick="window.teacherDashboard.openContentModal()"><span class="nav-icon">🎮</span><span>Games & Content</span></a>
+                </li>
+                <!-- AI Management -->
+                <li class="nav-item">
+                    <a href="#" class="nav-link" id="aiMenuLink"><span class="nav-icon">🤖</span><span>AI Management</span></a>
+                    <div class="dropdown">
+                        <div class="dropdown-header">AI Assistant settings for students</div>
+                        <a href="#" class="dropdown-item" id="toggleAI" onclick="console.log('🟢 TRACE: AI button clicked'); window.teacherDashboard.toggleAIForClass()"><span class="dropdown-icon" id="aiStatusIcon">🔴</span><div class="dropdown-content"><div class="dropdown-title" id="aiStatusText">AI disabled for students</div><div class="dropdown-desc">Click to enable</div></div></a>
+                        <div style="padding: 10px 20px; border-top: 1px solid #f0f2f5; background: #f8f9fa;"><strong style="font-size: 14px; color: #555;">🎯 Select model for class:</strong><div style="font-size: 12px; color: #777; margin-top: 2px;">Current model: <span class="current-ai-model">ChatGPT</span></div></div>
+                        <a href="#" class="dropdown-item ai-model-btn" data-model="chatgpt" onclick="window.teacherDashboard.switchAIModel('chatgpt')"><span class="dropdown-icon">🤖</span><div class="dropdown-content"><div class="dropdown-title">ChatGPT</div><div class="dropdown-desc">Advanced model from OpenAI</div></div></a>
+                        <a href="#" class="dropdown-item ai-model-btn" data-model="claude" onclick="window.teacherDashboard.switchAIModel('claude')"><span class="dropdown-icon">🧠</span><div class="dropdown-content"><div class="dropdown-title">Claude</div><div class="dropdown-desc">Smart model from Anthropic</div></div></a>
+                        <a href="#" class="dropdown-item ai-model-btn" data-model="gemini" onclick="window.teacherDashboard.switchAIModel('gemini')"><span class="dropdown-icon">✨</span><div class="dropdown-content"><div class="dropdown-title">Gemini</div><div class="dropdown-desc">Google's model</div></div></a>
+                    </div>
+                </li>
+                <!-- Tools -->
+                <li class="nav-item">
+                    <a href="#" class="nav-link"><span class="nav-icon">🔧</span><span>Tools</span></a>
+                    <div class="dropdown">
+                        <div class="dropdown-header">Utilities and debugging tools</div>
+                        <a href="#" class="dropdown-item" onclick="toggleDebug()"><span class="dropdown-icon">🐛</span><div class="dropdown-content"><div class="dropdown-title">Debug Console</div><div class="dropdown-desc">Show technical information</div></div></a>
+                        <a href="#" class="dropdown-item" onclick="exportData()"><span class="dropdown-icon">📊</span><div class="dropdown-content"><div class="dropdown-title">Export Data</div><div class="dropdown-desc">Save student list and messages</div></div></a>
+                        <a href="#" class="dropdown-item" id="open-content-manager-btn">
+                            <span class="dropdown-icon">📚</span>
+                            <div class="dropdown-content">
+                                <div class="dropdown-title">Manage Content & AI</div>
+                                <div class="dropdown-desc">Edit your personal links and AI prompts</div>
+                            </div>
+                        </a>
+                    </div>
+                </li>
+                <!-- Polls -->
+                <li class="nav-item">
+                    <a href="#" class="nav-link"><span class="nav-icon">📊</span><span>Polls</span></a>
+                    <div class="dropdown">
+                        <a href="#" class="dropdown-item" onclick="window.teacherDashboard.openPollCreationModal()"><span class="dropdown-icon">➕</span><div class="dropdown-content"><div class="dropdown-title">Start New Poll</div><div class="dropdown-desc">Send quick question to class</div></div></a>
+                    </div>
+                </li>
+                <!-- Reports -->
+                <li class="nav-item">
+                    <a href="#" class="nav-link"><span class="nav-icon">📊</span><span>Reports</span></a>
+                    <div class="dropdown">
+                        <div class="dropdown-header">Reports and analytics (FFU)</div>
+                        <a href="#" class="dropdown-item" onclick="generateLessonSummary()"><span class="dropdown-icon">📋</span><div class="dropdown-content"><div class="dropdown-title">Lesson Summary</div><div class="dropdown-desc">Comprehensive AI report of entire lesson</div></div></a>
+                        <a href="#" class="dropdown-item" onclick="exportLessonData()"><span class="dropdown-icon">💾</span><div class="dropdown-content"><div class="dropdown-title">Export Lesson Data</div><div class="dropdown-desc">Save all data to file</div></div></a>
+                    </div>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Right Side: Actions & Status -->
+        <div class="header-right">
+            <!-- New End Lesson Button with Dropdown -->
+            <div class="dropdown-action-btn" id="end-lesson-controls">
+                <button class="main-action-icon">✖</button>
+                <div class="dropdown">
+                    <a href="#" class="dropdown-item" id="reset-screens-action">
+                        <span class="dropdown-icon">⏹️</span>
+                        <div class="dropdown-content">
+                            <div class="dropdown-title">Clear Screens</div>
+                            <div class="dropdown-desc">Reset all student screens</div>
+                        </div>
+                    </a>
+                    <a href="#" class="dropdown-item danger-item" id="end-lesson-action" onclick="document.getElementById('end-lesson-modal').classList.add('visible')">
+                        <span class="dropdown-icon">🚫</span>
+                        <div class="dropdown-content">
+                            <div class="dropdown-title">Exit Lesson</div>
+                            <div class="dropdown-desc">End lesson and show report options</div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- New Logout Button -->
+            <button id="logout-action-btn" class="main-action-icon green" title="Logout">🚪</button>
+
+            <!-- New Connection Status Indicator -->
+            <div id="connectionStatus" title="Connecting..."></div>
+        </div>
+    </div>
+</header>
+<!-- ===================== NEW HEADER END ===================== -->
 
     <!-- Main Content -->
-    <div class="main-content">
+    <div class="main-content" style="display: none;">
         <!-- Students Section -->
         <div class="section">
             <h2>👥 Connected Students (<span id="studentsCount">0</span>)</h2>
@@ -475,6 +442,77 @@ FULL PATH: public\index.html
     <script src="js/ClassroomSDK.js"></script>
     <script src="js/teacher-dashboard.js"></script>
 
+    <!-- =========================================================== -->
+    <!-- ========= CONTENT & AI PROMPT MANAGEMENT MODAL ============ -->
+    <!-- =========================================================== -->
+    <div id="content-manager-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3>📚 Manage Your Content & AI Contexts</h3>
+                <button class="modal-close">×</button>
+            </div>
+            <div class="modal-body" style="padding: 0;">
+                <!-- Tabs Navigation -->
+                <div class="tabs">
+                    <button class="tab-link active" data-tab="tab-my-content">My Content</button>
+                    <button class="tab-link" data-tab="tab-my-prompts">My AI Prompts</button>
+                </div>
+
+                <!-- Tab 1: My Content (Links) -->
+                <div id="tab-my-content" class="tab-content active">
+                    <div class="content-list" id="personal-content-list">
+                        <!-- Personal links will be dynamically inserted here -->
+                    </div>
+                    <div class="content-form-container">
+                        <h4>Add New Content</h4>
+                        <form id="personal-content-form">
+                            <input type="text" id="content-title" placeholder="Title (e.g., 'PhET Simulation')" required>
+                            <input type="text" id="content-desc" placeholder="Description" required>
+                            <input type="text" id="content-icon" placeholder="Icon (e.g., '🎯')" required>
+                            <input type="url" id="content-url" placeholder="https://..." required>
+                            <input type="hidden" id="content-id">
+                            <button type="submit">Save Content</button>
+                            <button type="button" id="cancel-content-edit" class="secondary" style="display:none;">Cancel Edit</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Tab 2: My AI Prompts -->
+                <div id="tab-my-prompts" class="tab-content">
+                    <h4>Select Active AI Context for this Lesson</h4>
+                    <select id="active-prompt-selector">
+                        <option value="general">General (Open Context)</option>
+                        <!-- Personal prompts will be dynamically inserted here -->
+                    </select>
+
+                    <hr>
+
+                    <h4>My Prompt Library</h4>
+                    <div class="content-list" id="personal-prompts-list">
+                        <!-- Personal prompts will be dynamically inserted here -->
+                    </div>
+
+                    <h4>Prompt Creation Wizard</h4>
+                    <div class="prompt-wizard">
+                        <p>1. Describe your lesson goal in your own words:</p>
+                        <textarea id="prompt-goal-input" placeholder="e.g., 'Today I'm teaching the Pythagorean theorem and solving problems with right-angled triangles.'"></textarea>
+                        <button id="generate-prompt-suggestion-btn">Create a Prompt for Me</button>
+
+                        <div id="prompt-editing-area" style="display:none; margin-top: 20px;">
+                            <p>2. Refine the suggested prompt and save it:</p>
+                            <form id="personal-prompt-form">
+                                <input type="text" id="prompt-title" placeholder="Prompt Title (e.g., 'Pythagorean Theorem')" required>
+                                <textarea id="prompt-content" rows="6" required></textarea>
+                                <input type="hidden" id="prompt-id">
+                                <button type="submit">Save Prompt</button>
+                                <button type="button" id="cancel-prompt-edit" class="secondary" style="display:none;">Cancel Edit</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <script>
         console.log('🟢 TRACE: index.html loaded');
         
@@ -487,14 +525,22 @@ FULL PATH: public\index.html
         console.log('🔍 Firebase initialized');
         console.log('🔍 ClassroomSDK available:', typeof ClassroomSDK);
         
-        window.addEventListener('load', () => {
-            console.log('🟢 TRACE: Window loaded, initializing teacher dashboard');
-            window.teacherDashboard = new TeacherDashboard();
-            window.teacherDashboard.init().then(() => {
-                console.log('✅ Teacher dashboard fully initialized');
-            }).catch(error => {
-                console.error('❌ Teacher dashboard initialization failed:', error);
-            });
+        window.teacherDashboard = new TeacherDashboard();
+        firebase.auth().onAuthStateChanged(user => {
+            if (user) {
+                // User is signed in.
+                console.log('✅ User is signed in:', user.uid);
+                document.getElementById('loading-overlay').classList.remove('hidden'); // Show loading
+                window.teacherDashboard.handleSuccessfulLogin(user)
+                    .catch(err => {
+                        console.error("Login handling failed", err);
+                        window.teacherDashboard.logout(); // Logout on error
+                    });
+            } else {
+                // User is signed out.
+                console.log('🚪 User is signed out.');
+                window.teacherDashboard.showLoginScreen();
+            }
         });
         
         // פונקציות גלובליות
@@ -1921,6 +1967,299 @@ body {
     z-index: 10001 !important;
 }
 
+/* ================================================= */
+/* ========== NEW HEADER STYLES - OVERHAUL ========= */
+/* ================================================= */
+
+/* 1. Fix Header Overflow & Layout */
+.nav-container {
+    justify-content: normal;
+    gap: 15px; /* Reduced gap */
+}
+
+.header-left, .header-right {
+    display: flex;
+    align-items: center;
+    gap: 15px; /* Reduced gap */
+    flex-shrink: 0;
+}
+
+.header-center {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    min-width: 0;
+}
+
+.nav-link {
+    padding: 12px 15px; /* Reduced padding */
+}
+
+/* 2. Redesigned Connection Status Indicator */
+.status-indicator {
+    display: none;
+}
+
+#connectionStatus {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #f39c12;
+    transition: all 0.3s ease;
+    cursor: help;
+    animation: pulse 2s infinite;
+}
+
+#connectionStatus.connected {
+    background-color: #27ae60;
+    box-shadow: 0 0 10px #27ae60;
+}
+
+#connectionStatus.disconnected {
+    background-color: #e74c3c;
+    box-shadow: 0 0 10px #e74c3c;
+}
+
+/* 3. New Action Buttons */
+#resetScreensBtn {
+    display: none !important;
+}
+
+.dropdown-action-btn {
+    position: relative;
+}
+
+.main-action-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    color: white;
+    border: 2px solid white;
+    font-size: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+}
+
+.main-action-icon.green {
+    background: #27ae60; /* Green color for logout */
+}
+
+.main-action-icon.green:hover {
+    background: #229954; /* Darker green */
+    transform: scale(1.1);
+}
+
+.dropdown-action-btn .main-action-icon {
+    background: #e74c3c;
+}
+
+.dropdown-action-btn:hover .main-action-icon {
+    transform: scale(1.1) rotate(90deg);
+    background: #c0392b;
+}
+
+.dropdown-action-btn .dropdown {
+    left: auto;
+    right: 0;
+    top: 90%;
+}
+
+.dropdown-action-btn:hover .dropdown {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* ================================================= */
+/* ============ NEW LOGIN SCREEN STYLES ============ */
+/* ================================================= */
+
+.login-overlay {
+    display: flex; /* This will be controlled by JS */
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+.login-box {
+    background: rgba(255, 255, 255, 0.95);
+    padding: 40px 50px;
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    max-width: 450px;
+}
+.login-box p {
+    margin-top: 10px;
+    color: #555;
+}
+.signin-options-title {
+    margin: 30px 0 15px 0;
+    color: #333;
+    font-weight: 500;
+    text-transform: uppercase;
+    font-size: 14px;
+    letter-spacing: 1px;
+}
+.signin-options {
+    display: flex;
+    justify-content: center;
+    gap: 25px;
+}
+.signin-btn {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    border: 1px solid #ddd;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 15px;
+}
+.signin-btn:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    border-color: #aaa;
+}
+.signin-btn img {
+    width: 100%;
+    height: auto;
+}
+
+/* =========================================================== */
+/* ========= CONTENT & PROMPT MANAGER MODAL STYLES =========== */
+/* =========================================================== */
+
+/* Tabs */
+.tabs {
+    display: flex;
+    border-bottom: 1px solid #eee;
+    background: #f8f9fa;
+}
+.tab-link {
+    padding: 15px 20px;
+    cursor: pointer;
+    border: none;
+    background: none;
+    font-size: 16px;
+    font-weight: 500;
+    color: #555;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s ease;
+}
+.tab-link:hover {
+    background: #e9ecef;
+}
+.tab-link.active {
+    color: #007bff;
+    border-bottom-color: #007bff;
+}
+.tab-content {
+    display: none;
+    padding: 25px;
+}
+.tab-content.active {
+    display: block;
+}
+
+/* Content/Prompt List */
+.content-list {
+    max-height: 250px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+    border: 1px solid #eee;
+    border-radius: 8px;
+}
+.list-item {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+}
+.list-item:last-child {
+    border-bottom: none;
+}
+.list-item-icon {
+    font-size: 24px;
+    margin-right: 15px;
+}
+.list-item-details {
+    flex-grow: 1;
+}
+.list-item-title {
+    font-weight: 600;
+}
+.list-item-desc {
+    font-size: 13px;
+    color: #666;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 400px;
+}
+.list-item-actions button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    margin-left: 10px;
+    padding: 5px;
+    transition: color 0.2s;
+}
+.list-item-actions .edit-btn:hover { color: #007bff; }
+.list-item-actions .delete-btn:hover { color: #e74c3c; }
+
+/* Forms */
+.content-form-container, .prompt-wizard {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+}
+#personal-content-form, #personal-prompt-form {
+    display: grid;
+    gap: 15px;
+}
+#personal-content-form { grid-template-columns: 1fr 1fr; }
+#personal-content-form input[type="url"] { grid-column: 1 / -1; }
+
+#content-manager-modal input[type="text"],
+#content-manager-modal input[type="url"],
+#content-manager-modal textarea,
+#content-manager-modal select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 14px;
+}
+#content-manager-modal button {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    background: #007bff;
+    color: white;
+    transition: background 0.2s;
+}
+#content-manager-modal button:hover {
+    background: #0056b3;
+}
+#content-manager-modal button.secondary {
+    background: #6c757d;
+}
+#content-manager-modal button.secondary:hover {
+    background: #5a6268;
+}
+
 
 =================================================================
 FILE: js\ClassroomSDK.js
@@ -1973,18 +2312,6 @@ class ClassroomSDK {
         this.studentsListener = null;
         this.messagesListener = null;
         this.roomListener = null;
-    }
-
-    // Anonymous authentication
-    async loginAnonymously() {
-        try {
-            const userCredential = await this.auth.signInAnonymously();
-            console.log('✅ Anonymous login successful:', userCredential.user.uid);
-            return userCredential.user;
-        } catch (error) {
-            console.error('🔥 Anonymous login failed:', error);
-            throw error;
-        }
     }
 
     // Generate unique 4-digit room code
@@ -2453,15 +2780,12 @@ class ClassroomSDK {
         return document.documentElement.lang || 'en';
     }
 
-    async sendAIMessage(prompt, language) {
-        // Check if AI is disabled for students
+    async sendAIMessage(prompt, language, bypassContext = false) {
         if (!this.isTeacher && !this.isAiActiveForClass) {
             this.addAIMessage("🤖", "AI is not available at the moment.", false);
             return;
         }
-
         if (!language) language = this.getInterfaceLanguage();
-
         if (!this.functions) {
             this.addAIMessage("🤖", "Error: AI service not initialized", false);
             return;
@@ -2470,16 +2794,19 @@ class ClassroomSDK {
 
         try {
             const askAIFunction = this.functions.httpsCallable('askAI');
-            const result = await askAIFunction({ prompt, roomCode: this.roomCode, language });
+            const result = await askAIFunction({ 
+                prompt, 
+                roomCode: this.roomCode, 
+                language,
+                bypassContext // New parameter
+            });
             const senderName = result.data.model ? `🤖 (${result.data.model})` : "🤖";
             this.addAIMessage(senderName, result.data.result, false);
+            return result.data; // Return the full result object
         } catch (error) {
             console.error("🔥 Error calling askAI:", error);
-            let errorMsg = "An error occurred with the AI service.";
-            if (error.code === 'functions/unauthenticated') {
-                errorMsg = "Authentication error. Please reconnect.";
-            }
-            this.addAIMessage("🤖", errorMsg, false);
+            this.addAIMessage("🤖", `Error: ${error.message}`, false);
+            return null;
         }
     }
 
@@ -3032,12 +3359,8 @@ class TeacherDashboard {
             console.log('🔍 SDK created:', !!this.sdk);
             console.log('🔍 SDK toggleAI method:', !!this.sdk.toggleAI);
             
-            const user = await this.sdk.loginAnonymously();
-            this.debugLog("👑 Teacher logged in successfully", { uid: user.uid });
-
-            await this.sdk.init('teacher-dashboard', user);
-            this.debugLog(`✅ Teacher dashboard initialized with room: ${this.sdk.getRoomCode()}`);
-
+            await this.handleSuccessfulLogin(this.sdk.auth.currentUser);
+            
             // וודא שה-SDK מוכן לפני יצירת AI
             console.log('🔍 Final SDK check before AI init:');
             console.log('- SDK exists:', !!this.sdk);
@@ -3472,13 +3795,21 @@ class TeacherDashboard {
     updateConnectionStatus(isConnected) {
         const statusDiv = document.getElementById('connectionStatus');
         if (!statusDiv) return;
+
+        // Remove old classes and stop animation
+        statusDiv.className = '';
+        statusDiv.style.animation = 'none';
+
         if (isConnected) {
-            statusDiv.textContent = '🟢 Connected to Firebase';
-            statusDiv.className = 'connection-status connected';
+            statusDiv.classList.add('connected');
+            statusDiv.setAttribute('title', 'Connected to Firebase');
         } else {
-            statusDiv.textContent = '🔴 Not Connected';
-            statusDiv.className = 'connection-status disconnected';
+            statusDiv.classList.add('disconnected');
+            statusDiv.setAttribute('title', 'Not Connected');
         }
+        // Force restart animation for visual feedback
+        void statusDiv.offsetWidth;
+        statusDiv.style.animation = 'pulse 2s infinite';
     }
 
     addActivity(activityText) {
@@ -3780,6 +4111,22 @@ class TeacherDashboard {
                 this.resetStudentScreens();
             }
         });
+
+        document.getElementById('reset-screens-action')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (confirm('Are you sure you want to reset all student screens?')) {
+                this.resetStudentScreens();
+            }
+        });
+
+        // Logout button
+        document.getElementById('logout-action-btn')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.logout();
+        });
+
+        // === הוספת קריאה ל-initContentManager ב-setupEventListeners ===
+        this.initContentManager();
     }
 
     openPrivateMessageModal(student) {
@@ -3877,35 +4224,29 @@ class TeacherDashboard {
         this.populateGamesList();
     }
 
+    // === החלפת populateGamesList בפונקציה חדשה ===
     populateGamesList() {
         const container = document.getElementById('game-list-container');
         if (!container) return;
 
-        const games = this.config?.games || []; // 🎯 Change here
-        container.innerHTML = ''; // Clear previous content
+        const content = this.personalContent || [];
+        container.innerHTML = '';
 
-        if (games.length === 0) {
-            container.innerHTML = '<p>No games found in config.json</p>';
+        if (content.length === 0) {
+            container.innerHTML = '<p style="padding: 15px; text-align: center;">You haven\'t added any personal content yet. Go to Tools > Manage Content & AI to add some.</p>';
             return;
         }
 
-        games.forEach(game => {
-            const gameElement = document.createElement('a');
-            gameElement.href = '#';
-            gameElement.className = 'dropdown-item'; // Reuse existing CSS
-            gameElement.onclick = (e) => {
+        content.forEach(item => {
+            const element = document.createElement('a');
+            element.href = '#';
+            element.className = 'dropdown-item';
+            element.onclick = (e) => {
                 e.preventDefault();
-                this.sendSelectedGame(game.url);
+                this.sendSelectedGame(item.url);
             };
-
-            gameElement.innerHTML = `
-                <span class="dropdown-icon">${game.icon || '🔗'}</span>
-                <div class="dropdown-content">
-                    <div class="dropdown-title">${game.name}</div>
-                    <div class="dropdown-desc">${game.description}</div>
-                </div>
-            `;
-            container.appendChild(gameElement);
+            element.innerHTML = `<span class="dropdown-icon">${item.icon || '🔗'}</span><div class="dropdown-content"><div class="dropdown-title">${item.title}</div><div class="dropdown-desc">${item.description}</div></div>`;
+            container.appendChild(element);
         });
     }
 
@@ -4210,6 +4551,359 @@ class TeacherDashboard {
             console.error("Error resetting student screens:", error);
         }
     }
+
+// =======================================================
+// ========= CONTENT & PROMPT MANAGEMENT LOGIC ===========
+// =======================================================
+
+async loadPersonalData() {
+    if (!this.sdk || !this.sdk.auth.currentUser) return;
+    const teacherUid = this.sdk.auth.currentUser.uid;
+
+    // Load personal content
+    try {
+        const contentRef = this.sdk.db.collection('teachers').doc(teacherUid).collection('personal_links');
+        const contentSnapshot = await contentRef.get();
+        this.personalContent = contentSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+        console.error("Error loading personal content:", error);
+        this.personalContent = [];
+    }
+
+    // Load personal prompts
+    try {
+        const promptsRef = this.sdk.db.collection('teachers').doc(teacherUid).collection('personal_prompts');
+        const promptsSnapshot = await promptsRef.get();
+        this.personalPrompts = promptsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+        console.error("Error loading personal prompts:", error);
+        this.personalPrompts = [];
+    }
+
+    this.debugLog('✅ Personal content and prompts loaded', {
+        content: this.personalContent,
+        prompts: this.personalPrompts
+    });
+}
+
+initContentManager() {
+    // Tab switching logic
+    const modal = document.getElementById('content-manager-modal');
+    modal.querySelectorAll('.tab-link').forEach(button => {
+        button.addEventListener('click', () => {
+            modal.querySelectorAll('.tab-link, .tab-content').forEach(el => el.classList.remove('active'));
+            button.classList.add('active');
+            document.getElementById(button.dataset.tab).classList.add('active');
+        });
+    });
+
+    // Open modal button
+    document.getElementById('open-content-manager-btn').addEventListener('click', () => {
+        this.renderPersonalContentList();
+        this.renderPersonalPromptsList();
+        this.populateActivePromptSelector();
+        modal.classList.add('visible');
+    });
+
+    // Close modal button
+    modal.querySelector('.modal-close').addEventListener('click', () => modal.classList.remove('visible'));
+
+    // === Content Management ===
+    document.getElementById('personal-content-form').addEventListener('submit', this.handleSavePersonalContent.bind(this));
+    document.getElementById('cancel-content-edit').addEventListener('click', this.resetContentForm.bind(this));
+
+    // === Prompt Management ===
+    document.getElementById('personal-prompt-form').addEventListener('submit', this.handleSavePersonalPrompt.bind(this));
+    document.getElementById('cancel-prompt-edit').addEventListener('click', this.resetPromptForm.bind(this));
+    document.getElementById('generate-prompt-suggestion-btn').addEventListener('click', this.generatePromptSuggestion.bind(this));
+    document.getElementById('active-prompt-selector').addEventListener('change', this.setActivePrompt.bind(this));
+}
+
+// --- RENDER FUNCTIONS ---
+renderPersonalContentList() {
+    const list = document.getElementById('personal-content-list');
+    list.innerHTML = '';
+    (this.personalContent || []).forEach(item => {
+        const el = document.createElement('div');
+        el.className = 'list-item';
+        el.innerHTML = `
+            <span class="list-item-icon">${item.icon}</span>
+            <div class="list-item-details">
+                <div class="list-item-title">${item.title}</div>
+                <div class="list-item-desc">${item.description}</div>
+            </div>
+            <div class="list-item-actions">
+                <button class="edit-btn" data-id="${item.id}">✏️</button>
+                <button class="delete-btn" data-id="${item.id}">🗑️</button>
+            </div>
+        `;
+        el.querySelector('.edit-btn').addEventListener('click', () => this.editContentItem(item.id));
+        el.querySelector('.delete-btn').addEventListener('click', () => this.deleteContentItem(item.id));
+        list.appendChild(el);
+    });
+}
+
+renderPersonalPromptsList() {
+    const list = document.getElementById('personal-prompts-list');
+    list.innerHTML = '';
+    (this.personalPrompts || []).forEach(prompt => {
+        const el = document.createElement('div');
+        el.className = 'list-item';
+        el.innerHTML = `
+            <span class="list-item-icon">🎯</span>
+            <div class="list-item-details">
+                <div class="list-item-title">${prompt.title}</div>
+                <div class="list-item-desc">${prompt.prompt}</div>
+            </div>
+            <div class="list-item-actions">
+                <button class="edit-btn" data-id="${prompt.id}">✏️</button>
+                <button class="delete-btn" data-id="${prompt.id}">🗑️</button>
+            </div>
+        `;
+        el.querySelector('.edit-btn').addEventListener('click', () => this.editPromptItem(prompt.id));
+        el.querySelector('.delete-btn').addEventListener('click', () => this.deletePromptItem(prompt.id));
+        list.appendChild(el);
+    });
+}
+
+populateActivePromptSelector() {
+    const selector = document.getElementById('active-prompt-selector');
+    selector.innerHTML = '<option value="general">General (Open Context)</option>';
+    (this.personalPrompts || []).forEach(prompt => {
+        const option = document.createElement('option');
+        option.value = prompt.id;
+        option.textContent = prompt.title;
+        selector.appendChild(option);
+    });
+    // You might want to get the active prompt from room settings and set it here
+}
+
+// --- CRUD & LOGIC FUNCTIONS ---
+async handleSavePersonalContent(e) {
+    e.preventDefault();
+    const teacherUid = this.sdk.auth.currentUser.uid;
+    const form = e.target;
+    const contentId = form.querySelector('#content-id').value;
+    const data = {
+        title: form.querySelector('#content-title').value,
+        description: form.querySelector('#content-desc').value,
+        icon: form.querySelector('#content-icon').value,
+        url: form.querySelector('#content-url').value,
+    };
+
+    const collectionRef = this.sdk.db.collection('teachers').doc(teacherUid).collection('personal_links');
+    if (contentId) { // Update
+        await collectionRef.doc(contentId).update(data);
+    } else { // Create
+        await collectionRef.add(data);
+    }
+    await this.loadPersonalData();
+    this.renderPersonalContentList();
+    this.resetContentForm();
+}
+
+editContentItem(id) {
+    const item = this.personalContent.find(c => c.id === id);
+    const form = document.getElementById('personal-content-form');
+    form.querySelector('#content-id').value = item.id;
+    form.querySelector('#content-title').value = item.title;
+    form.querySelector('#content-desc').value = item.description;
+    form.querySelector('#content-icon').value = item.icon;
+    form.querySelector('#content-url').value = item.url;
+    document.getElementById('cancel-content-edit').style.display = 'inline-block';
+}
+
+resetContentForm() {
+    document.getElementById('personal-content-form').reset();
+    document.getElementById('content-id').value = '';
+    document.getElementById('cancel-content-edit').style.display = 'none';
+}
+
+async deleteContentItem(id) {
+    if (!confirm('Are you sure you want to delete this content?')) return;
+    const teacherUid = this.sdk.auth.currentUser.uid;
+    await this.sdk.db.collection('teachers').doc(teacherUid).collection('personal_links').doc(id).delete();
+    await this.loadPersonalData();
+    this.renderPersonalContentList();
+}
+
+async generatePromptSuggestion() {
+    const goal = document.getElementById('prompt-goal-input').value;
+    if (!goal) {
+        alert('Please describe your lesson goal first.');
+        return;
+    }
+    const metaPrompt = `You are an expert in pedagogical prompt engineering. A teacher described their lesson goal as: "${goal}". Based on this, write an effective system prompt in English. The prompt should instruct an AI to act as a helpful teaching assistant, answer only questions directly related to the specified topic, and politely decline off-topic questions by reminding the student to focus on the lesson.`;
+
+    this.addActivity('🤖 Asking AI for a prompt suggestion...');
+    const result = await this.sdk.sendAIMessage(metaPrompt, 'en', true); // true to bypass context
+    if (result && result.text) {
+        document.getElementById('prompt-content').value = result.text;
+        document.getElementById('prompt-editing-area').style.display = 'block';
+    } else {
+        alert('The AI could not generate a suggestion. Please try again.');
+    }
+}
+
+async handleSavePersonalPrompt(e) {
+    e.preventDefault();
+    const teacherUid = this.sdk.auth.currentUser.uid;
+    const form = e.target;
+    const promptId = form.querySelector('#prompt-id').value;
+    const data = {
+        title: form.querySelector('#prompt-title').value,
+        prompt: form.querySelector('#prompt-content').value,
+    };
+
+    const collectionRef = this.sdk.db.collection('teachers').doc(teacherUid).collection('personal_prompts');
+    if (promptId) { // Update
+        await collectionRef.doc(promptId).update(data);
+    } else { // Create
+        await collectionRef.add(data);
+    }
+    await this.loadPersonalData();
+    this.renderPersonalPromptsList();
+    this.populateActivePromptSelector();
+    this.resetPromptForm();
+}
+
+editPromptItem(id) {
+    const item = this.personalPrompts.find(p => p.id === id);
+    const form = document.getElementById('personal-prompt-form');
+    document.getElementById('prompt-editing-area').style.display = 'block';
+    form.querySelector('#prompt-id').value = item.id;
+    form.querySelector('#prompt-title').value = item.title;
+    form.querySelector('#prompt-content').value = item.prompt;
+    document.getElementById('cancel-prompt-edit').style.display = 'inline-block';
+}
+
+resetPromptForm() {
+    document.getElementById('personal-prompt-form').reset();
+    document.getElementById('prompt-id').value = '';
+    document.getElementById('prompt-editing-area').style.display = 'none';
+    document.getElementById('cancel-prompt-edit').style.display = 'none';
+    document.getElementById('prompt-goal-input').value = '';
+}
+
+async deletePromptItem(id) {
+    if (!confirm('Are you sure you want to delete this prompt?')) return;
+    const teacherUid = this.sdk.auth.currentUser.uid;
+    await this.sdk.db.collection('teachers').doc(teacherUid).collection('personal_prompts').doc(id).delete();
+    await this.loadPersonalData();
+    this.renderPersonalPromptsList();
+    this.populateActivePromptSelector();
+}
+
+async setActivePrompt(e) {
+    const promptId = e.target.value;
+    const roomRef = this.sdk.db.collection('rooms').doc(this.sdk.getRoomCode());
+    await roomRef.update({ 'settings.active_prompt_id': promptId === 'general' ? null : promptId });
+    this.addActivity(`✅ AI context set to: ${e.target.options[e.target.selectedIndex].text}`);
+}
+
+    // ========== AUTHENTICATION METHODS ==========
+
+    async handleSuccessfulLogin(user) {
+        console.log("🚀 Handling successful login...");
+        this.sdk = new ClassroomSDK();
+
+        // 1. Get or create teacher profile
+        await this.getOrCreateTeacherProfile(user);
+
+        // 2. Initialize SDK
+        await this.sdk.init('teacher-dashboard', user);
+        this.debugLog(`✅ Teacher dashboard initialized with room: ${this.sdk.getRoomCode()}`);
+
+        // 3. Setup UI and Listeners
+        this.sdk.createAIInterface();
+        this.initializeTeacherAI();
+        this.sdk.listenForStudents(this.updateStudentsList.bind(this));
+        this.sdk.listenForMessages(this.addMessage.bind(this));
+        this.sdk.listenForRoomUpdates(this.handleRoomUpdates.bind(this)); // Use a dedicated handler
+
+        this.updateConnectionStatus(true);
+        this.setupEventListeners(); // Re-run to attach listeners to new elements
+        this.updateRoomDisplay();
+
+        // 4. טען תכנים והנחיות אישיות
+        await this.loadPersonalData();
+
+        // 5. Show the main app UI
+        document.querySelector('.header').style.display = 'block';
+        document.querySelector('.main-content').style.display = 'flex';
+        document.getElementById('login-container').style.display = 'none';
+        document.getElementById('loading-overlay').classList.add('hidden');
+        console.log("🎉 Dashboard is ready and visible.");
+    }
+
+    async getOrCreateTeacherProfile(user) {
+        const teacherRef = this.sdk.db.collection('teachers').doc(user.uid);
+        const doc = await teacherRef.get();
+
+        if (!doc.exists) {
+            console.log(`Creating new teacher profile for: ${user.displayName}`);
+            await teacherRef.set({
+                displayName: user.displayName,
+                email: user.email,
+                photoURL: user.photoURL,
+                created_at: firebase.firestore.FieldValue.serverTimestamp(),
+                last_login: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        } else {
+            console.log(`Teacher ${user.displayName} exists. Updating last login.`);
+            await teacherRef.update({
+                last_login: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
+    }
+
+    showLoginScreen() {
+        document.querySelector('.header').style.display = 'none';
+        document.querySelector('.main-content').style.display = 'none';
+        document.getElementById('loading-overlay').classList.add('hidden');
+        const loginContainer = document.getElementById('login-container');
+        loginContainer.style.display = 'flex';
+
+        document.getElementById('google-signin-btn').onclick = () => this.signInWithProvider('google');
+        document.getElementById('microsoft-signin-btn').onclick = () => this.signInWithProvider('microsoft');
+    }
+
+    async signInWithProvider(providerName) {
+        let provider;
+        if (providerName === 'google') {
+            provider = new firebase.auth.GoogleAuthProvider();
+        } else if (providerName === 'microsoft') {
+            provider = new firebase.auth.OAuthProvider('microsoft.com');
+        } else {
+            return;
+        }
+
+        try {
+            await firebase.auth().signInWithPopup(provider);
+        } catch (error) {
+            console.error(`${providerName} Sign-In Error:`, error);
+            alert(`Failed to sign in with ${providerName}.`);
+        }
+    }
+
+    logout() {
+        firebase.auth().signOut();
+    }
+
+    // Helper to prevent code duplication
+    handleRoomUpdates(roomData) {
+        if (!roomData || !roomData.settings) return;
+
+        if (roomData.settings.currentPoll) {
+            this.displayPollResults(roomData.settings.currentPoll);
+        }
+
+        const aiIsActiveInDB = roomData.settings.ai_active === true;
+        if (this.isAiActive !== aiIsActiveInDB) {
+            this.isAiActive = aiIsActiveInDB;
+            this.updateAIButton();
+        }
+    }
 }
 
 // Global functions for HTML buttons with English support
@@ -4391,8 +5085,188 @@ function debugClassroom() {
 
 
 =================================================================
+FILE: locales\ar\common.json
+FULL PATH: public\locales\ar\common.json
+=================================================================
+
+{
+  "loading": "[ar] Loading...",
+  "error": "[ar] Error",
+  "success": "[ar] Success"
+}
+
+
+=================================================================
+FILE: locales\ar\student.json
+FULL PATH: public\locales\ar\student.json
+=================================================================
+
+{
+  "join": "[ar] Join Lesson",
+  "name": "[ar] Your name",
+  "roomCode": "[ar] Room Code"
+}
+
+
+=================================================================
+FILE: locales\ar\teacher.json
+FULL PATH: public\locales\ar\teacher.json
+=================================================================
+
+{
+  "dashboard": "[ar] Teacher Dashboard",
+  "students": "[ar] Students",
+  "messages": "[ar] Messages"
+}
+
+
+=================================================================
+FILE: locales\en\common.json
+FULL PATH: public\locales\en\common.json
+=================================================================
+
+{
+  "loading": "Loading...",
+  "error": "Error",
+  "success": "Success"
+}
+
+
+=================================================================
+FILE: locales\en\student.json
+FULL PATH: public\locales\en\student.json
+=================================================================
+
+{
+  "join": "Join Lesson",
+  "name": "Your name",
+  "roomCode": "Room Code"
+}
+
+
+=================================================================
+FILE: locales\en\teacher.json
+FULL PATH: public\locales\en\teacher.json
+=================================================================
+
+{
+  "dashboard": "Teacher Dashboard",
+  "students": "Students",
+  "messages": "Messages"
+}
+
+
+=================================================================
+FILE: locales\es\common.json
+FULL PATH: public\locales\es\common.json
+=================================================================
+
+{
+  "loading": "[es] Loading...",
+  "error": "[es] Error",
+  "success": "[es] Success"
+}
+
+
+=================================================================
+FILE: locales\es\student.json
+FULL PATH: public\locales\es\student.json
+=================================================================
+
+{
+  "join": "[es] Join Lesson",
+  "name": "[es] Your name",
+  "roomCode": "[es] Room Code"
+}
+
+
+=================================================================
+FILE: locales\es\teacher.json
+FULL PATH: public\locales\es\teacher.json
+=================================================================
+
+{
+  "dashboard": "[es] Teacher Dashboard",
+  "students": "[es] Students",
+  "messages": "[es] Messages"
+}
+
+
+=================================================================
+FILE: locales\fr\common.json
+FULL PATH: public\locales\fr\common.json
+=================================================================
+
+{
+  "loading": "[fr] Loading...",
+  "error": "[fr] Error",
+  "success": "[fr] Success"
+}
+
+
+=================================================================
+FILE: locales\fr\student.json
+FULL PATH: public\locales\fr\student.json
+=================================================================
+
+{
+  "join": "[fr] Join Lesson",
+  "name": "[fr] Your name",
+  "roomCode": "[fr] Room Code"
+}
+
+
+=================================================================
+FILE: locales\fr\teacher.json
+FULL PATH: public\locales\fr\teacher.json
+=================================================================
+
+{
+  "dashboard": "[fr] Teacher Dashboard",
+  "students": "[fr] Students",
+  "messages": "[fr] Messages"
+}
+
+
+=================================================================
+FILE: locales\he\common.json
+FULL PATH: public\locales\he\common.json
+=================================================================
+
+{
+  "loading": "[he] Loading...",
+  "error": "[he] Error",
+  "success": "[he] Success"
+}
+
+
+=================================================================
+FILE: locales\he\student.json
+FULL PATH: public\locales\he\student.json
+=================================================================
+
+{
+  "join": "[he] Join Lesson",
+  "name": "[he] Your name",
+  "roomCode": "[he] Room Code"
+}
+
+
+=================================================================
+FILE: locales\he\teacher.json
+FULL PATH: public\locales\he\teacher.json
+=================================================================
+
+{
+  "dashboard": "[he] Teacher Dashboard",
+  "students": "[he] Students",
+  "messages": "[he] Messages"
+}
+
+
+=================================================================
 END OF PROJECT FILES
-Total files processed: 9
+Total files processed: 25
 Total files skipped: 0
-Generated: 2025-07-10 21:13:30
+Generated: 2025-07-17 18:24:41
 =================================================================
